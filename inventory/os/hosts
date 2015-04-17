@@ -1,2 +1,3 @@
 # Eventually we'll add the GCE, AWS, etc dynamic inventories, but for now...
-localhost ansible_python_interpreter=/home/lenaic/doc/prog/RedHat/openshift-ansible/py-venv/bin/python
+localhost ansible_python_interpreter="/usr/bin/env python"
+#localhost ansible_python_interpreter=/home/eric/openstack/python-client/bin/python

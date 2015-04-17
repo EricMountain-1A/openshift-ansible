@@ -12,45 +12,58 @@
   nova_keypair:
     name: '{{ cluster }}_key'
 
-- name: Create base image
-  glance_image:
-    name: centos
-    copy_from: http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.raw
-    disk_format: raw
-    is_public: no
-    timeout: 1800
+# - name: Create base image
+#   glance_image:
+#     name: centos
+#     copy_from: http://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.raw
+#     disk_format: raw
+#     is_public: no
+#     timeout: 1800
 
 - name: Create network
   quantum_network:
     name: '{{ cluster }}_net'
     shared: no
 
-- name: Create subnet
-  quantum_subnet:
-    name: '{{ cluster }}_subnet'
-    network_name: '{{ cluster }}_net'
-    cidr: 192.168.{{ 1048576 | random % 256 }}.0/24
+# - name: Create subnet
+#   quantum_subnet:
+#     name: '{{ cluster }}_subnet'
+#     network_name: '{{ cluster }}_net'
+#     cidr: 192.168.{{ 1048576 | random % 256 }}.0/24
 
-- name: Create router
-  quantum_router:
-    name: '{{ cluster }}_router'
+# - name: Create router
+#   quantum_router:
+#     name: '{{ cluster }}_router'
+
+- name: Keypair
+  nova_keypair:
+    name: '{{ cluster }}_keypair'
+    public_key: '{{ lookup("file","~/.ssh/id_rsa.pub") }}'
+
+- name: Security group
+  neutron_sec_group:
+    name: '{{ cluster }}_sec_group'
+    state: 'present'
+    description: '{{ cluster }} security group'
+
+
 
 - name: Launch instance(s)
   nova_compute:
     name: '{{ item }}'
     image_name: centos-70-raw
-    key_name: 'lenaic at ncelhuard-Xperiment'
+    key_name: 'Eric Mountain'
     flavor_id: 2
-    security_groups: lenaic_security_group
+    security_groups: '{{ cluster }}_security_group'
     # nics:
     #   - [ '6184d361-fad8-4167-9e82-cc36cf59b0f0' ]
-    auto_floating_ip: yes
-    # floating_ip_pools: external
+    #auto_floating_ip: yes
+    floating_ip_pools: 'external'
   with_items: '{{ instances }}'
-    
+
 - fail:
     msg: "THE END"
-    
+
 - name: Launch instance(s)
   gce:
     instance_names: "{{ instances }}"
