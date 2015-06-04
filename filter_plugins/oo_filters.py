@@ -205,6 +205,8 @@ class FilterModule(object):
 
     @staticmethod
     def oo_split(string, separator=','):
+        ''' This splits the input string into a list
+        '''
         return string.split(separator)
 
     def filters(self):
