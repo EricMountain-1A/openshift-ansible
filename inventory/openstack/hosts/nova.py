@@ -1,5 +1,7 @@
 #!/usr/bin/env python2
 
+# pylint: skip-file
+
 # (c) 2012, Marco Vito Moscaritolo <marco@agavee.com>
 #
 # This file is part of Ansible,
