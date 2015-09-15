@@ -19,6 +19,15 @@
   register: sdn_install_result
   when: openshift.common.use_openshift_sdn
 
+- name: Patch SDN setup script to remove docker0 interface
+  lineinfile:
+    dest: /usr/bin/openshift-sdn-kube-subnet-setup.sh
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - { regexp: 'ip link set docker0 down', line: 'ip link set docker0 down || true' }
+    - { regexp: 'brctl delbr docker0', line: 'brctl delbr docker0 || true' }
+
 - name: Set node OpenShift facts
   openshift_facts:
     role: "{{ item.role }}"
