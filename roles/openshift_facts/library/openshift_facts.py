@@ -17,6 +17,7 @@ import ConfigParser
 import copy
 import os
 from distutils.util import strtobool
+from netaddr import IPNetwork
 
 
 def hostname_valid(hostname):
@@ -434,10 +435,17 @@ def set_aggregate_facts(facts):
         all_hostnames.add(facts['common']['public_hostname'])
 
         if 'master' in facts:
+            # FIXME: not sure why but facts['dns']['domain'] fails
+            cluster_domain = 'cluster.local'
             if 'cluster_hostname' in facts['master']:
                 all_hostnames.add(facts['master']['cluster_hostname'])
             if 'cluster_public_hostname' in facts['master']:
                 all_hostnames.add(facts['master']['cluster_public_hostname'])
+            all_hostnames.update(['openshift', 'openshift.default', 'openshift.default.svc',
+                                  'openshift.default.svc.' + cluster_domain, 'kubernetes', 'kubernetes.default',
+                                  'kubernetes.default.svc', 'kubernetes.default.svc.' + cluster_domain])
+            first_svc_ip = str(IPNetwork(facts['master']['portal_net'])[1])
+            all_hostnames.add(first_svc_ip)
 
         facts['common']['all_hostnames'] = list(all_hostnames)
 
