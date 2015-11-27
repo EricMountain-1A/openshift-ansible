@@ -26,4 +26,4 @@
   - vars.yml
   tasks:
   - debug:
-      msg: "{{ hostvars | oo_select_keys(groups[scratch_group]) | oo_pretty_print_cluster }}"
+      msg: "{{ hostvars | oo_select_keys(groups[scratch_group] | default([])) | oo_pretty_print_cluster }}"

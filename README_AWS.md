@@ -38,8 +38,8 @@ You may also want to allow access from the outside world on the following ports:
 • 80    - Web Apps
 • 443   - Web Apps (https)
 • 4789  - SDN / VXLAN
-• 8443  - Openshift Console
-• 10250 - kubelet 
+• 8443  - OpenShift Console
+• 10250 - kubelet
 ```
 
 
@@ -81,9 +81,20 @@ Node specific defaults:
 - Docker volume type: gp2 (only applicable if ephemeral is false)
 - Docker volume iops: 500 (only applicable when volume type is io1)
 
+Specifying ec2 instance type.
+All instances:
+- export ec2_instance_type='m4.large'
+Master instances:
+- export ec2_master_instance_type='m4.large'
+Infra node instances:
+- export ec2_infra_instance_type='m4.large'
+Non-infra node instances:
+- export ec2_node_instance_type='m4.large'
+etcd instances:
+- export ec2_etcd_instance_type='m4.large'
+
 If needed, these values can be changed by setting environment variables on your system.
 
-- export ec2_instance_type='m4.large'
 - export ec2_image='ami-307b3658'
 - export ec2_region='us-east-1'
 - export ec2_keypair='libra'
@@ -105,7 +116,7 @@ Install Dependencies
 1. Ansible requires python-boto for aws operations:
 RHEL/CentOS/Fedora
 ```
-  yum install -y ansible python-boto
+  yum install -y ansible python-boto pyOpenSSL
 ```
 OSX:
 ```
@@ -154,18 +165,10 @@ Note: If no deployment type is specified, then the default is origin.
 
 
 ## Post-ansible steps
-Create the default router
--------------------------
-On the master host:
-```sh
-oadm router --create=true \
-  --credentials=/etc/openshift/master/openshift-router.kubeconfig
-```
 
-Create the default docker-registry
-----------------------------------
-On the master host:
-```sh
-oadm registry --create=true \
-  --credentials=/etc/openshift/master/openshift-registry.kubeconfig
-```
+You should now be ready to follow the **What's Next?** section of the advanced installation guide to deploy your router, registry, and other components.
+
+Refer to the advanced installation guide for your deployment type:
+
+* [OpenShift Enterprise](https://docs.openshift.com/enterprise/3.0/install_config/install/advanced_install.html#what-s-next)
+* [OpenShift Origin](https://docs.openshift.org/latest/install_config/install/advanced_install.html#what-s-next)
