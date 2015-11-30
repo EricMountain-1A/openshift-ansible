@@ -266,6 +266,9 @@
 
 - name: Parse named certificates
   hosts: localhost
+  connection: local
+  sudo: false
+  gather_facts: no
   vars:
     internal_hostnames: "{{ hostvars[groups.oo_first_master.0].openshift.common.internal_hostnames }}"
     named_certificates: "{{ hostvars[groups.oo_first_master.0].openshift_master_named_certificates | default([]) }}"
