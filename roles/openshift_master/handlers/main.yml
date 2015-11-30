@@ -12,3 +12,6 @@
   service: name={{ openshift.common.service_type }}-master-controllers state=restarted
   when: (openshift_master_ha | bool) and (not master_controllers_service_status_changed | default(false)) and openshift.master.cluster_method == 'native'
   ignore_errors: yes
+
+- name: systemctl daemon-reload
+  command: systemctl daemon-reload
