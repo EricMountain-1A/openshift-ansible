@@ -51,7 +51,7 @@
     register: stack_show_status_result
     until: stack_show_status_result.stdout not in ['CREATE_IN_PROGRESS', 'UPDATE_IN_PROGRESS']
     retries: 30
-    delay: 1
+    delay: 5
     failed_when: stack_show_status_result.stdout not in ['CREATE_COMPLETE', 'UPDATE_COMPLETE']
 
   - name: Read OpenStack Stack outputs
