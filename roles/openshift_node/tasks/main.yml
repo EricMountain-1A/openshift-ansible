@@ -133,12 +133,6 @@
   notify:
     - restart docker
 
-- name: Use OverlayFS docker backend storage
-  lineinfile:
-    dest: /etc/sysconfig/docker-storage
-    regexp: '^DOCKER_STORAGE_OPTIONS=.*'
-    line: "DOCKER_STORAGE_OPTIONS=-s overlay"
-
 - name: Additional storage plugin configuration
   include: storage_plugins/main.yml
 

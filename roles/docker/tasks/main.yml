@@ -16,6 +16,12 @@
   - systemctl daemon-reload
   - restart docker
 
+- name: Use OverlayFS docker backend storage
+  lineinfile:
+    dest: /etc/sysconfig/docker-storage
+    regexp: '^DOCKER_STORAGE_OPTIONS=.*'
+    line: "DOCKER_STORAGE_OPTIONS=-s overlay"
+
 - name: enable and start the docker service
   service: name=docker enabled=yes state=started
 
