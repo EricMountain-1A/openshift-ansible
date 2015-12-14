@@ -47,7 +47,7 @@
         - origin-node
         - pcsd
 
-    - yum: name={{ item }} state=absent
+    - action: "{{ ansible_pkg_mgr }} name={{ item }} state=absent"
       when: not is_atomic | bool
       with_items:
         - atomic-enterprise
@@ -181,5 +181,8 @@
     - name: Reload systemd manager configuration
       command: systemctl daemon-reload
 
+- hosts: nodes
+  sudo: yes
+  tasks:
     - name: restart docker
       service: name=docker state=restarted

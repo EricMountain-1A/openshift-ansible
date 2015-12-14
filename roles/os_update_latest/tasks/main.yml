@@ -1,4 +1,4 @@
 ---
 - name: Update all packages
-  yum: name=* state=latest
+  action: "{{ ansible_pkg_mgr }} name=* state=latest"
   failed_when: false
