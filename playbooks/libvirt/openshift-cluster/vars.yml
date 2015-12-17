@@ -32,6 +32,7 @@ deployment_vars:
                   default('rhel-guest-image-7.1-20150224.0.x86_64.qcow2', True) }}"
       sha256: "{{ lookup('oo_option', 'image_sha256') |
                   default('ff8198653cfd9c39411fc57077451ac291b3a605d305e905932fd6d5b1890bf3', True) }}"
+      compression: ""
     ssh_user: openshift
     sudo: yes
 #  origin:
