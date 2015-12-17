@@ -46,19 +46,22 @@ class AwsUtil(object):
                 self.alias_lookup[value] = key
 
     @staticmethod
-    def get_inventory(args=None):
+    def get_inventory(args=None, cached=False):
         """Calls the inventory script and returns a dictionary containing the inventory."
 
         Keyword arguments:
         args -- optional arguments to pass to the inventory script
         """
         minv = multi_inventory.MultiInventory(args)
-        minv.run()
+        if cached:
+            minv.get_inventory_from_cache()
+        else:
+            minv.run()
         return minv.result
 
     def get_environments(self):
         """Searches for env tags in the inventory and returns all of the envs found."""
-        pattern = re.compile(r'^tag_environment_(.*)')
+        pattern = re.compile(r'^tag_env_(.*)')
 
         envs = []
         inv = self.get_inventory()
@@ -106,13 +109,13 @@ class AwsUtil(object):
         inst_by_env = {}
         for _, host in inv['_meta']['hostvars'].items():
             # If you don't have an environment tag, we're going to ignore you
-            if 'ec2_tag_environment' not in host:
+            if 'ec2_tag_env' not in host:
                 continue
 
-            if host['ec2_tag_environment'] not in inst_by_env:
-                inst_by_env[host['ec2_tag_environment']] = {}
+            if host['ec2_tag_env'] not in inst_by_env:
+                inst_by_env[host['ec2_tag_env']] = {}
             host_id = "%s:%s" % (host['ec2_tag_Name'], host['ec2_id'])
-            inst_by_env[host['ec2_tag_environment']][host_id] = host
+            inst_by_env[host['ec2_tag_env']][host_id] = host
 
         return inst_by_env
 
@@ -154,7 +157,7 @@ class AwsUtil(object):
     def gen_env_tag(env):
         """Generate the environment tag
         """
-        return "tag_environment_%s" % env
+        return "tag_env_%s" % env
 
     def gen_host_type_tag(self, host_type):
         """Generate the host type tag
@@ -168,11 +171,12 @@ class AwsUtil(object):
         host_type = self.resolve_host_type(host_type)
         return "tag_env-host-type_%s-%s" % (env, host_type)
 
-    def get_host_list(self, host_type=None, envs=None):
+    def get_host_list(self, host_type=None, envs=None, version=None, cached=False):
         """Get the list of hosts from the inventory using host-type and environment
         """
+        retval = set([])
         envs = envs or []
-        inv = self.get_inventory()
+        inv = self.get_inventory(cached=cached)
 
         # We prefer to deal with a list of environments
         if issubclass(type(envs), basestring):
@@ -183,29 +187,25 @@ class AwsUtil(object):
 
         if host_type and envs:
             # Both host type and environment were specified
-            retval = []
             for env in envs:
-                env_host_type_tag = self.gen_env_host_type_tag(host_type, env)
-                if env_host_type_tag in inv.keys():
-                    retval += inv[env_host_type_tag]
-            return set(retval)
+                retval.update(inv.get('tag_environment_%s' % env, []))
+            retval.intersection_update(inv.get(self.gen_host_type_tag(host_type), []))
 
-        if envs and not host_type:
+        elif envs and not host_type:
             # Just environment was specified
-            retval = []
             for env in envs:
                 env_tag = AwsUtil.gen_env_tag(env)
                 if env_tag in inv.keys():
-                    retval += inv[env_tag]
-            return set(retval)
+                    retval.update(inv.get(env_tag, []))
 
-        if host_type and not envs:
+        elif host_type and not envs:
             # Just host-type was specified
-            retval = []
             host_type_tag = self.gen_host_type_tag(host_type)
             if host_type_tag in inv.keys():
-                retval = inv[host_type_tag]
-            return set(retval)
+                retval.update(inv.get(host_type_tag, []))
 
-        # We should never reach here!
-        raise ArgumentError("Invalid combination of parameters")
+        # If version is specified then return only hosts in that version
+        if version:
+            retval.intersection_update(inv.get('oo_version_%s' % version, []))
+
+        return retval
