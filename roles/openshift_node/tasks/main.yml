@@ -10,7 +10,7 @@
         - "openstack"
       cloud-config:
         - "/etc/cloud.conf"
-  when: openshift.provider.name == 'openstack'
+  when: False # openshift.provider.name == 'openstack'
 
 - name: Set node facts
   openshift_facts:
