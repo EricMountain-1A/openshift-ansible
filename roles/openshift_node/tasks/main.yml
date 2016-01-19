@@ -136,19 +136,6 @@
 - name: Additional storage plugin configuration
   include: storage_plugins/main.yml
 
-- name: openshift systemd unit drop-in directory
-  file:
-    path: /etc/systemd/system/{{ openshift.common.service_type }}-node.service.d
-    state: directory
-
-- name: Configure openshift to restart on failures
-  template:
-    src: restart_on-failure.conf
-    dest: /etc/systemd/system/{{ openshift.common.service_type }}-node.service.d/restart_on-failure.conf
-  notify:
-  - systemctl daemon-reload
-  - restart node
-
 - name: Start and enable node
   service: name={{ openshift.common.service_type }}-node enabled=yes state=started
   register: start_result
