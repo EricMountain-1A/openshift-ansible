@@ -1,0 +1,22 @@
+- name: Install Bind
+  action: "{{ ansible_pkg_mgr }} name=bind"
+
+- name: Configure Bind
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    validate: "{{ item.validate }}"
+  with_items:
+    - src: openstack.zone
+      dest: /var/named/openstack.zone
+      validate: "named-checkzone novalocal %s"
+    - src: named.conf
+      dest: /etc/named.conf
+      validate: "named-checkconf %s"
+  notify: restart bind
+
+- name: Enable Bind
+  service:
+    name: named
+    state: started
+    enabled: yes
