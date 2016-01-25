@@ -92,7 +92,7 @@
     mode: 0400
   notify:
   - restart node
-  when: openshift.provider.name == 'openstack'
+  when: "'provider' in openshift and openshift.provider.name == 'openstack'"
 
 # TODO: add the validate parameter when there is a validation command to run
 - name: Create the Node config
