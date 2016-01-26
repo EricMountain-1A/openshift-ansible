@@ -11,6 +11,7 @@ deployment_rhel7_ent_base:
   image:
     url:    "{{ lookup('oo_option', 'image_url') |
                 default('https://access.cdn.redhat.com//content/origin/files/sha256/25/25f880767ec6bf71beb532e17f1c45231640bbfdfbbb1dffb79d2c1b328388e0/rhel-guest-image-7.2-20151102.0.x86_64.qcow2', True) }}"
+    compression: ""
     name:   "{{ lookup('oo_option', 'image_name') |
                 default('rhel-guest-image-7.2-20151102.0.x86_64.qcow2', True) }}"
     sha256: "{{ lookup('oo_option', 'image_sha256') |
