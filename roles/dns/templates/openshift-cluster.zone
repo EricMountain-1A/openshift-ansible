@@ -9,6 +9,6 @@ $TTL 1d
 
     IN NS {{ ansible_hostname }}
 {{ ansible_hostname }}  IN A  {{ ansible_default_ipv4.address }}
-{% for host in g_all_hosts %}
+{% for host in dns_all_hosts %}
 {{ hostvars[host].ansible_hostname }}  IN A  {{ hostvars[host]['ansible_default_ipv4'].address }}
 {% endfor %}

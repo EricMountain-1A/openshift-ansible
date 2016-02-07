@@ -7,9 +7,9 @@
     dest: "{{ item.dest }}"
     validate: "{{ item.validate }}"
   with_items:
-    - src: openstack.zone
-      dest: /var/named/openstack.zone
-      validate: "named-checkzone novalocal %s"
+    - src: openshift-cluster.zone
+      dest: /var/named/openshift-cluster.zone
+      validate: "named-checkzone {{ dns_zones[0] }} %s"
     - src: named.conf
       dest: /etc/named.conf
       validate: "named-checkconf %s"

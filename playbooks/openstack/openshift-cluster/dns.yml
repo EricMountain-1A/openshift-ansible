@@ -41,4 +41,7 @@
             lookup('oo_option', 'rhel_skip_subscription') | default(rhsub_skip, True) |
               default('no', True) | lower in ['no', 'false']
 
-    - dns
+    - { role: dns,
+        dns_forwarders: "{{ openstack_network_dns }}",
+        dns_zones: [ novalocal, openstacklocal ],
+        dns_all_hosts: "{{ g_all_hosts }}" }
