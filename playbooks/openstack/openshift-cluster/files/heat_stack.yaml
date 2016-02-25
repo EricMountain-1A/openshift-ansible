@@ -355,7 +355,6 @@ resources:
           port_range_min: 10250
           port_range_max: 10250
           remote_mode: remote_group_id
-          remote_group_id: { get_resource: master-secgrp }
 
   infra-secgrp:
     type: OS::Neutron::SecurityGroup
@@ -473,6 +472,7 @@ resources:
           subnet:      { get_resource: subnet }
           secgrp:
             - { get_resource: master-secgrp }
+            - { get_resource: node-secgrp }
           floating_network: { get_param: external_net }
           net_name:
             str_replace:
