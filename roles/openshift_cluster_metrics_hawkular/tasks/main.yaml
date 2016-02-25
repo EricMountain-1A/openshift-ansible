@@ -8,7 +8,7 @@
 - name: Install cluster metrics templates
   copy:
     src: cluster-metrics
-    dest: /etc/origin/
+    dest: "{{ openshift.common.config_base }}/"
 
 - name: Create metrics-deployer Service Account
   shell: >
@@ -43,7 +43,7 @@
 - name: Create Heapster Services
   shell: >
     {{ openshift.common.client_binary }} process -f
-    /etc/origin/cluster-metrics/metrics.yaml -v 
+    {{ openshift.common.config_base }}/cluster-metrics/metrics.yaml -v 
     HAWKULAR_METRICS_HOSTNAME=hawkular-metrics.example.com,USE_PERSISTENT_STORAGE=false |
     {{ openshift.common.client_binary }} create -n openshift-infra -f - 
   register: oex_heapster_services
