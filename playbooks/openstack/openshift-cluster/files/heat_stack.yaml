@@ -346,14 +346,14 @@ resources:
           port_range_max: 22
           remote_ip_prefix: { get_param: ssh_incoming }
         - direction: ingress
-          protocol: udp
-          port_range_min: 4789
-          port_range_max: 4789
-          remote_mode: remote_group_id
-        - direction: ingress
           protocol: tcp
           port_range_min: 10250
           port_range_max: 10250
+          remote_mode: remote_group_id
+        - direction: ingress
+          protocol: udp
+          port_range_min: 4789
+          port_range_max: 4789
           remote_mode: remote_group_id
 
   infra-secgrp:

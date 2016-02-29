@@ -5,7 +5,7 @@
 }
 
 Name:           openshift-ansible
-Version:        3.0.40
+Version:        3.0.47
 Release:        1%{?dist}
 Summary:        Openshift and Atomic Enterprise Ansible
 License:        ASL 2.0
@@ -50,8 +50,10 @@ cp -p bin/openshift_ansible.conf.example %{buildroot}/etc/openshift_ansible/open
 # Fix links
 rm -f %{buildroot}%{python_sitelib}/openshift_ansible/multi_inventory.py
 rm -f %{buildroot}%{python_sitelib}/openshift_ansible/aws
+rm -f %{buildroot}%{python_sitelib}/openshift_ansible/gce
 ln -sf %{_datadir}/ansible/inventory/multi_inventory.py %{buildroot}%{python_sitelib}/openshift_ansible/multi_inventory.py
 ln -sf %{_datadir}/ansible/inventory/aws %{buildroot}%{python_sitelib}/openshift_ansible/aws
+ln -sf %{_datadir}/ansible/inventory/gce %{buildroot}%{python_sitelib}/openshift_ansible/gce
 
 # openshift-ansible-docs install
 # -docs are currently just %doc, no install needed
@@ -259,6 +261,86 @@ Atomic OpenShift Utilities includes
 
 
 %changelog
+* Wed Feb 24 2016 Brenton Leanhardt <bleanhar@redhat.com> 3.0.47-1
+- a-o-i: Double safety check on master_lb (smunilla@redhat.com)
+- a-o-i: Better method for identifying master_lb (smunilla@redhat.com)
+
+* Tue Feb 23 2016 Brenton Leanhardt <bleanhar@redhat.com> 3.0.46-1
+- a-o-i: Exception checking around master_lb (smunilla@redhat.com)
+
+* Mon Feb 22 2016 Brenton Leanhardt <bleanhar@redhat.com> 3.0.45-1
+- Do not monitor for etcd watchers (mmahut@redhat.com)
+- remove old master registry item/triggers (jdiaz@redhat.com)
+- a-o-i: Redo logic for detecting master_lb (smunilla@redhat.com)
+- Fix 1.2 version check (jdetiber@redhat.com)
+- Fix pv/c creation failed_when. (abutcher@redhat.com)
+- Rename variable to delete temporary file, add configurable path.
+  (hrosnet@redhat.com)
+- Add /var/log to containerized node mounts (sdodson@redhat.com)
+- Add extra parameters for S3 registry: delete file, create bucket.
+  (hrosnet@redhat.com)
+- Don't make config files world readable (sdodson@redhat.com)
+- Fix requiring state and providing a default (rharriso@redhat.com)
+- bind in /etc/origin/node for non-master monitoring to be able to talk with
+  master (jdiaz@redhat.com)
+- a-o-i: pylint fixes related to too-long lines (smunilla@redhat.com)
+
+* Wed Feb 17 2016 Brenton Leanhardt <bleanhar@redhat.com> 3.0.44-1
+- create registry items/triggers under Openshift Node (jdiaz@redhat.com)
+- a-o-i: Change method for counting master_lb as installed
+  (smunilla@redhat.com)
+
+* Tue Feb 16 2016 Brenton Leanhardt <bleanhar@redhat.com> 3.0.43-1
+- Add default to state param (rharriso@redhat.com)
+- Add type to record_type param (rharriso@redhat.com)
+- Add types to module params (rharriso@redhat.com)
+- Adding examples to the dyn_record module (rharriso@redhat.com)
+- add item to track docker-registry pings (jdiaz@redhat.com)
+- Handle case where the user already had access to the scc
+  (bleanhar@redhat.com)
+- Refactoring the add-scc-to-user logic (bleanhar@redhat.com)
+- Apply openshift_docker to nodes during scaleup. (abutcher@redhat.com)
+- Change etcd deamon name for atomic-host (florian.lambert@enovance.com)
+
+* Tue Feb 16 2016 Joel Diaz <jdiaz@redhat.com> 3.0.42-1
+- Add gce softlink for openshift-ansible-bin
+
+* Mon Feb 15 2016 Brenton Leanhardt <bleanhar@redhat.com> 3.0.41-1
+- Bug 1308411 - Fail to install OSE 3.0 for no add-scc-to-user command
+  (bleanhar@redhat.com)
+- Add openshift_docker_options to append arbitrary options to
+  /etc/sysconfig/docker OPTIONS (sdodson@redhat.com)
+- oo_filter: added custom fitler to return hosts group info
+  (mwoodson@redhat.com)
+- add gce softlink for openshift-ansible-bin RPM (jdiaz@redhat.com)
+- a-o-i: Count nativeha hosts as "installed" for scaleup (smunilla@redhat.com)
+- a-o-i: Add master_routingconfig_subdomain to PERSIST_SETTINGS
+  (smunilla@redhat.com)
+- Bug 1308412 - Fail to install containerized HA master env on RHEL7
+  (bleanhar@redhat.com)
+- Bug 1308314 - Failed to continue installation when pressing CTRL-C
+  (bleanhar@redhat.com)
+- Updating the 3.1.1 router to match the new liveness probe configuration
+  (bleanhar@redhat.com)
+- Don't automatically give additional permissions to all OAuth users on upgrade
+  (jliggitt@redhat.com)
+- Fix adhoc boostrap fedora playbook (jdetiber@redhat.com)
+- Fix libvirt cluster creation (lhuard@amadeus.com)
+- Add missing `type` node labels on OpenStack and libvirt (lhuard@amadeus.com)
+- a-o-i: Prompts to allow minor upgrades (smunilla@redhat.com)
+- conditionalize loopback config on v >= 3.2/1.2 (jdetiber@redhat.com)
+- Fixes pv/pvc creation for latest builds (jdetiber@redhat.com)
+- Bug 1302970 - update script does not patch router if name is different from
+  default (bleanhar@redhat.com)
+- Fix loopback cluster name, context name, and user (jdetiber@redhat.com)
+- Changes for new Nuage RPMS (vishal.patil@nuagenetworks.net)
+- Make the GCE image_name and the machine_type configurable from the CLI
+  (lhuard@amadeus.com)
+- Better structure the output of the list playbook (lhuard@amadeus.com)
+- Fix issue when there are no infra nodes (lhuard@amadeus.com)
+- Remove fluentd_master and fluentd_node roles. (abutcher@redhat.com)
+- Remove etcd up checks from fluentd_master. (abutcher@redhat.com)
+
 * Thu Feb 11 2016 Brenton Leanhardt <bleanhar@redhat.com> 3.0.40-1
 - Bug 1306665 - [metrics] update metrics-deployer template to use latest image
   versions (bleanhar@redhat.com)

@@ -113,9 +113,11 @@ def write_inventory_vars(base_inventory, multiple_masters, proxy):
     if multiple_masters and proxy is not None:
         base_inventory.write('openshift_master_cluster_method=native\n')
         base_inventory.write("openshift_master_cluster_hostname={}\n".format(proxy.hostname))
-        base_inventory.write("openshift_master_cluster_public_hostname={}\n".format(proxy.public_hostname))
+        base_inventory.write(
+            "openshift_master_cluster_public_hostname={}\n".format(proxy.public_hostname))
     if CFG.settings.get('master_routingconfig_subdomain', False):
-        base_inventory.write("osm_default_subdomain={}\n".format(CFG.settings['master_routingconfig_subdomain']))
+        base_inventory.write(
+            "openshift_master_default_subdomain={}\n".format(CFG.settings['master_routingconfig_subdomain']))
 
 
 
@@ -204,7 +206,7 @@ def run_main_playbook(hosts, hosts_to_run_on, verbose=False):
     inventory_file = generate_inventory(hosts_to_run_on)
     if len(hosts_to_run_on) != len(hosts):
         main_playbook_path = os.path.join(CFG.ansible_playbook_directory,
-                                          'playbooks/byo/openshift-cluster/scaleup.yml')
+                                          'playbooks/byo/openshift-node/scaleup.yml')
     else:
         main_playbook_path = os.path.join(CFG.ansible_playbook_directory,
                                           'playbooks/byo/openshift-cluster/config.yml')
@@ -237,11 +239,18 @@ def run_uninstall_playbook(verbose=False):
     return run_ansible(playbook, inventory_file, facts_env, verbose)
 
 
-def run_upgrade_playbook(verbose=False):
+def run_upgrade_playbook(old_version, new_version, verbose=False):
     # TODO: do not hardcode the upgrade playbook, add ability to select the
     # right playbook depending on the type of upgrade.
-    playbook = os.path.join(CFG.settings['ansible_playbook_directory'],
-        'playbooks/byo/openshift-cluster/upgrades/v3_0_to_v3_1/upgrade.yml')
+    old_version = old_version.replace('.', '_')
+    new_version = old_version.replace('.', '_')
+    if old_version == new_version:
+        playbook = os.path.join(CFG.settings['ansible_playbook_directory'],
+            'playbooks/byo/openshift-cluster/upgrades/v{}_minor/upgrade.yml'.format(new_version))
+    else:
+        playbook = os.path.join(CFG.settings['ansible_playbook_directory'],
+            'playbooks/byo/openshift-cluster/upgrades/v{}_to_v{}/upgrade.yml'.format(old_version,
+                                                                                     new_version))
     # TODO: Upgrade inventory for upgrade?
     inventory_file = generate_inventory(CFG.hosts)
     facts_env = os.environ.copy()

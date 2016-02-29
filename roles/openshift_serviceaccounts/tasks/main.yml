@@ -27,7 +27,10 @@
   command: >
       {{ openshift.common.admin_binary }} policy add-scc-to-user
       privileged system:serviceaccount:{{ openshift_serviceaccounts_namespace }}:{{ item.0 }}
-  when: "item.1.rc == 0 and 'system:serviceaccount:{{ openshift_serviceaccounts_namespace }}:{{ item.0 }}' not in {{ (item.1.stdout | from_yaml).users }}"
+  when: "openshift.common.version_gte_3_1_or_1_1 and item.1.rc == 0 and 'system:serviceaccount:{{ openshift_serviceaccounts_namespace }}:{{ item.0 }}' not in {{ (item.1.stdout | from_yaml).users }}"
   with_nested:
   - openshift_serviceaccounts_names
   - scc_test.results
+
+- include: legacy_add_scc_to_user.yml
+  when: not openshift.common.version_gte_3_1_or_1_1

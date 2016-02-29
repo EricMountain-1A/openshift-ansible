@@ -78,7 +78,7 @@
       oauth_grant_method: "{{ openshift_master_oauth_grant_method | default(None) }}"
       sdn_cluster_network_cidr: "{{ osm_cluster_network_cidr | default(None) }}"
       sdn_host_subnet_length: "{{ osm_host_subnet_length | default(None) }}"
-      default_subdomain: "{{ osm_default_subdomain | default(None) }}"
+      default_subdomain: "{{ openshift_master_default_subdomain | default(osm_default_subdomain) | default(None) }}"
       custom_cors_origins: "{{ osm_custom_cors_origins | default(None) }}"
       default_node_selector: "{{ osm_default_node_selector | default(None) }}"
       project_request_message: "{{ osm_project_request_message | default(None) }}"
@@ -229,6 +229,9 @@
   template:
     dest: "{{ openshift.master.session_secrets_file }}"
     src: sessionSecretsFile.yaml.v1.j2
+    owner: root
+    group: root
+    mode: 0600
   when: openshift.master.session_auth_secrets is defined and openshift.master.session_encryption_secrets is defined
   notify:
   - restart master
@@ -254,6 +257,9 @@
     dest: "{{ openshift_master_config_file }}"
     src: master.yaml.v1.j2
     backup: true
+    owner: root
+    group: root
+    mode: 0600
   notify:
   - restart master
   - restart master api
@@ -278,7 +284,7 @@
 
 - name: Mask master service
   command: systemctl mask {{ openshift.common.service_type }}-master
-  when: openshift_master_ha | bool and openshift.master.cluster_method == 'native' and not openshift.common.is_atomic | bool
+  when: openshift_master_ha | bool and openshift.master.cluster_method == 'native' and not openshift.common.is_containerized | bool
 
 - name: Start and enable master api
   service: name={{ openshift.common.service_type }}-master-api enabled=yes state=started
