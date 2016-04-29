@@ -4,14 +4,6 @@
 #     msg: "SELinux is disabled, This deployment type requires that SELinux is enabled."
 #   when: (not ansible_selinux or ansible_selinux.status != 'enabled') and deployment_type in ['enterprise', 'online', 'atomic-enterprise', 'openshift-enterprise']
 
-- set_fact:
-    args_cloud:
-      cloud-provider:
-        - "openstack"
-      cloud-config:
-        - "/etc/cloud.conf"
-  when: False # openshift.provider.name == 'openstack'
-
 - name: Set node facts
   openshift_facts:
     role: "{{ item.role }}"
@@ -31,7 +23,7 @@
       annotations: "{{ openshift_node_annotations | default(none) }}"
       debug_level: "{{ openshift_node_debug_level | default(openshift.common.debug_level) }}"
       iptables_sync_period: "{{ openshift_node_iptables_sync_period | default(None) }}"
-      kubelet_args: "{{ args_cloud | oo_combine(openshift_node_kubelet_args | default(None)) }}"
+      kubelet_args: "{{ openshift_node_kubelet_args | default(None) }}"
       labels: "{{ lookup('oo_option', 'openshift_node_labels') | default( openshift_node_labels | default(none), true) }}"
       portal_net: "{{ openshift_master_portal_net | default(None) }}"
       registry_url: "{{ oreg_url | default(none) }}"
@@ -93,15 +85,6 @@
 - name: Start and enable openvswitch docker service
   service: name=openvswitch.service enabled=yes state=started
   when: openshift.common.is_containerized | bool and openshift.common.use_openshift_sdn | bool
-
-- name: Create the OpenStack config
-  template:
-    dest: /etc/cloud.conf
-    src: cloud.conf.j2
-    mode: 0400
-  notify:
-  - restart node
-  when: "'provider' in openshift and openshift.provider.name == 'openstack'"
 
 # TODO: add the validate parameter when there is a validation command to run
 - name: Create the Node config
