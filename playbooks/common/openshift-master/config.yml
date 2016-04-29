@@ -33,10 +33,6 @@
       openshift_master_debug_level: "{{ lookup('oo_option', 'openshift_master_debug_level') | default(openshift.common.debug_level, true) }}"
     when: openshift_master_debug_level is not defined
 
-  - set_fact:
-      use_cluster_metrics_hawkular: "{{ lookup('oo_option', 'use_cluster_metrics_hawkular') | default(false, true) }}"
-    when: use_cluster_metrics_hawkular is not defined
-
   roles:
   - openshift_facts
   post_tasks:
