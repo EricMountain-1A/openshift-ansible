@@ -2,10 +2,11 @@
 ###############################################################################
 # Evaluate host groups and gather facts
 ###############################################################################
-- name: Load openshift_facts
+- name: Load openshift_facts and update repos
   hosts: oo_masters_to_config:oo_nodes_to_config:oo_etcd_to_config:oo_lb_to_config
   roles:
   - openshift_facts
+  - openshift_repos
 
 - name: Evaluate additional groups for upgrade
   hosts: localhost
@@ -24,8 +25,8 @@
 - name: Verify upgrade can proceed
   hosts: oo_first_master
   vars:
-    openshift_master_ha: "{{ groups.oo_masters_to_config | length > 1 }}"
     target_version: "{{ '1.2' if deployment_type == 'origin' else '3.1.1.900' }}"
+    g_pacemaker_upgrade_url_segment: "{{ 'org/latest' if deployment_type =='origin' else '.com/enterprise/3.1' }}"
   gather_facts: no
   tasks:
   - fail:
@@ -33,6 +34,12 @@
         This upgrade is only supported for atomic-enterprise, origin, openshift-enterprise, and online
         deployment types
     when: deployment_type not in ['atomic-enterprise', 'origin','openshift-enterprise', 'online']
+
+  - fail:
+      msg: >
+        This upgrade does not support Pacemaker:
+        https://docs.openshift.{{ g_pacemaker_upgrade_url_segment }}/install_config/upgrading/pacemaker_to_native_ha.html
+    when: openshift.master.cluster_method is defined and openshift.master.cluster_method == 'pacemaker'
 
   - fail:
       msg: >
@@ -47,12 +54,64 @@
     when: openshift_image_tag is defined and openshift_image_tag.split('v',1).1 | version_compare(target_version ,'<')
 
 - name: Verify upgrade can proceed
+  hosts: oo_masters_to_config
+  roles:
+  - openshift_facts
+  tasks:
+  - openshift_facts:
+      role: master
+      local_facts:
+        ha: "{{ groups.oo_masters_to_config | length > 1 }}"
+
+  - name: Ensure Master is running
+    service:
+      name: "{{ openshift.common.service_type }}-master"
+      state: started
+      enabled: yes
+    when: openshift.master.ha is defined and not openshift.master.ha | bool and openshift.common.is_containerized | bool
+
+  - name: Ensure HA Master is running
+    service:
+      name: "{{ openshift.common.service_type }}-master-api"
+      state: started
+      enabled: yes
+    when: openshift.master.ha is defined and openshift.master.ha | bool and openshift.common.is_containerized | bool
+
+  - name: Ensure HA Master is running
+    service:
+      name: "{{ openshift.common.service_type }}-master-controllers"
+      state: started
+      enabled: yes
+    when: openshift.master.ha is defined and openshift.master.ha | bool and openshift.common.is_containerized | bool
+
+- name: Verify upgrade can proceed
+  hosts: oo_nodes_to_config
+  roles:
+  - openshift_facts
+  tasks:
+  - name: Ensure Node is running
+    service:
+      name: "{{ openshift.common.service_type }}-node"
+      state: started
+      enabled: yes
+    when: openshift.common.is_containerized | bool
+
+- name: Verify upgrade can proceed
   hosts: oo_masters_to_config:oo_nodes_to_config
   vars:
     target_version: "{{ '1.2' if deployment_type == 'origin' else '3.1.1.900' }}"
+    openshift_docker_hosted_registry_insecure: True
+    openshift_docker_hosted_registry_network: "{{ hostvars[groups.oo_first_master.0].openshift.common.portal_net }}"
+  handlers:
+  - include: ../../../../../roles/openshift_master/handlers/main.yml
+  - include: ../../../../../roles/openshift_node/handlers/main.yml
   roles:
+  # We want the cli role to evaluate so that the containerized oc/oadm wrappers
+  # are modified to use the correct image tag.  However, this can trigger a
+  # docker restart if new configuration is laid down which would immediately
+  # pull the latest image and defeat the purpose of these tasks.
   - openshift_cli
-  tasks:
+  pre_tasks:
   - name: Clean package cache
     command: "{{ ansible_pkg_mgr }} clean all"
     when: not openshift.common.is_atomic | bool
@@ -93,11 +152,25 @@
 
   - fail:
       msg: Verifying the correct version was found
+    when: g_aos_versions.curr_version == ""
+
+  - fail:
+      msg: Verifying the correct version was found
     when: verify_upgrade_version is defined and g_new_version != verify_upgrade_version
 
+  - include_vars: ../../../../../roles/openshift_master/vars/main.yml
+    when: inventory_hostname in groups.oo_masters_to_config
+
   - name: Update systemd units
-    script: ../files/ensure_system_units_have_version.sh {{ openshift.common.service_type }} {{ openshift.common.deployment_type }} {{ g_aos_versions.curr_version }}
-    when: openshift.common.is_containerized | bool
+    include: ../../../../../roles/openshift_master/tasks/systemd_units.yml openshift_version=v{{ g_new_version }}
+    when: inventory_hostname in groups.oo_masters_to_config
+
+  - include_vars: ../../../../../roles/openshift_node/vars/main.yml
+    when: inventory_hostname in groups.oo_nodes_to_config
+
+  - name: Update systemd units
+    include: ../../../../../roles/openshift_node/tasks/systemd_units.yml openshift_version=v{{ g_new_version }}
+    when: inventory_hostname in groups.oo_nodes_to_config
 
   # Note: the version number is hardcoded here in hopes of catching potential
   # bugs in how g_aos_versions.curr_version is set
@@ -108,6 +181,13 @@
       - /etc/sysconfig/{{ openshift.common.service_type }}*
     when: verify_upgrade_version is defined
 
+  - name: Verifying the image version is used in the systemd unit
+    shell: grep IMAGE_VERSION {{ item }}
+    with_items:
+      - /etc/systemd/system/openvswitch.service
+      - /etc/systemd/system/{{ openshift.common.service_type }}*.service
+    when: openshift.common.is_containerized | bool
+
   - fail:
       msg: This playbook requires Origin 1.1 or later
     when: deployment_type == 'origin' and g_aos_versions.curr_version | version_compare('1.1','<')
@@ -116,10 +196,9 @@
       msg: This playbook requires Atomic Enterprise Platform/OpenShift Enterprise 3.1 or later
     when: deployment_type == 'atomic-openshift' and g_aos_versions.curr_version | version_compare('3.1','<')
 
-  # TODO: this may only make sense for RPM installs.  We probably need another check for containerized installs.
   - fail:
       msg: Upgrade packages not found
-    when: (g_aos_versions.avail_version | default(g_aos_versions.curr_version, true) | version_compare(target_version, '<'))
+    when: openshift_image_tag is not defined and (g_aos_versions.avail_version | default(g_aos_versions.curr_version, true) | version_compare(target_version, '<'))
 
   - name: Determine available Docker
     script: ../files/rpm_versions.sh docker
@@ -141,8 +220,7 @@
 
   - fail:
       msg: This playbook requires access to Docker 1.9 or later
-    when: not openshift.common.is_atomic | bool
-          and (g_docker_version.avail_version | default(g_docker_version.curr_version, true) | version_compare('1.9','<'))
+    when: g_docker_version.avail_version | default(g_docker_version.curr_version, true) | version_compare('1.9','<')
 
   # TODO: add check to upgrade ostree to get latest Docker
 
