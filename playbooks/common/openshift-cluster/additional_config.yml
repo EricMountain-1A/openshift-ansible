@@ -28,4 +28,4 @@
   - role: flannel_register
     when: openshift.common.use_flannel | bool
 
-
+- include: ../../amadeus/openshift-manage-node/config.yml
