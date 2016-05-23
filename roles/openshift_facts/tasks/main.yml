@@ -19,6 +19,10 @@
   action: "{{ ansible_pkg_mgr }} name=PyYAML state=present"
   when: not l_is_atomic | bool
 
+- name: Ensure yum-utils is installed
+  action: "{{ ansible_pkg_mgr }} name=yum-utils state=present"
+  when: not l_is_atomic | bool
+
 - name: Gather Cluster facts and set is_containerized if needed
   openshift_facts:
     role: common
@@ -32,18 +36,8 @@
       public_hostname: "{{ openshift_public_hostname | default(None) }}"
       public_ip: "{{ openshift_public_ip | default(None) }}"
       portal_net: "{{ openshift_portal_net | default(openshift_master_portal_net) | default(None) }}"
-
-# had to be done outside of the above because hostname isn't yet set
-- name: Gather hostnames for proxy configuration
-  openshift_facts:
-    role: common
-    local_facts:
       http_proxy: "{{ openshift_http_proxy | default(None) }}"
       https_proxy: "{{ openshift_https_proxy | default(None) }}"
       no_proxy: "{{ openshift_no_proxy | default(None) }}"
       generate_no_proxy_hosts: "{{ openshift_generate_no_proxy_hosts | default(True) }}"
-      no_proxy_internal_hostnames: "{{ hostvars | oo_select_keys(groups['oo_nodes_to_config']
-                                                   | union(groups['oo_masters_to_config'])
-                                                   | union(groups['oo_etcd_to_config'] | default([])))
-                                               | oo_collect('openshift.common.hostname') | default([]) | join (',')
-                                               }}"
+      no_proxy_internal_hostnames: "{{ openshift_no_proxy_internal_hostnames | default(None) }}"
