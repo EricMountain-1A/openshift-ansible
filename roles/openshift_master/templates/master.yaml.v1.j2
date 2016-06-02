@@ -139,6 +139,7 @@ networkConfig:
 {% endif %}
 # serviceNetworkCIDR must match kubernetesMasterConfig.servicesSubnet
   serviceNetworkCIDR: {{ openshift.common.portal_net }}
+  externalIPNetworkCIDR: 0.0.0.0/0
 oauthConfig:
 {% if 'oauth_always_show_provider_selection' in openshift.master %}
   alwaysShowProviderSelection: {{ openshift.master.oauth_always_show_provider_selection }}
