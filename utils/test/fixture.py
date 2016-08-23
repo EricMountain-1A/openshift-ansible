@@ -10,28 +10,36 @@ from click.testing import CliRunner
 # Substitute in a product name before use:
 SAMPLE_CONFIG = """
 variant: %s
-ansible_ssh_user: root
+variant_version: 3.3
 master_routingconfig_subdomain: example.com
-hosts:
-  - connect_to: 10.0.0.1
-    ip: 10.0.0.1
-    hostname: master-private.example.com
-    public_ip: 24.222.0.1
-    public_hostname: master.example.com
-    master: true
-    node: true
-  - connect_to: 10.0.0.2
-    ip: 10.0.0.2
-    hostname: node1-private.example.com
-    public_ip: 24.222.0.2
-    public_hostname: node1.example.com
-    node: true
-  - connect_to: 10.0.0.3
-    ip: 10.0.0.3
-    hostname: node2-private.example.com
-    public_ip: 24.222.0.3
-    public_hostname: node2.example.com
-    node: true
+deployment:
+    ansible_ssh_user: root
+    hosts:
+      - connect_to: 10.0.0.1
+        ip: 10.0.0.1
+        hostname: master-private.example.com
+        public_ip: 24.222.0.1
+        public_hostname: master.example.com
+        roles:
+            - master
+            - node
+      - connect_to: 10.0.0.2
+        ip: 10.0.0.2
+        hostname: node1-private.example.com
+        public_ip: 24.222.0.2
+        public_hostname: node1.example.com
+        roles:
+            - node
+      - connect_to: 10.0.0.3
+        ip: 10.0.0.3
+        hostname: node2-private.example.com
+        public_ip: 24.222.0.3
+        public_hostname: node2.example.com
+        roles:
+            - node
+    roles:
+        master:
+        node:
 """
 
 def read_yaml(config_file_path):
@@ -87,12 +95,13 @@ class OOCliFixture(OOInstallFixture):
         self.assertEquals(exp_hosts_to_run_on_len, len(hosts_to_run_on))
 
     def _verify_config_hosts(self, written_config, host_count):
-        self.assertEquals(host_count, len(written_config['hosts']))
-        for host in written_config['hosts']:
+        self.assertEquals(host_count, len(written_config['deployment']['hosts']))
+        for host in written_config['deployment']['hosts']:
             self.assertTrue('hostname' in host)
             self.assertTrue('public_hostname' in host)
             if 'preconfigured' not in host:
-                self.assertTrue('node' in host or 'storage' in host)
+                if 'roles' in host:
+                    self.assertTrue('node' in host['roles'] or 'storage' in host['roles'])
                 self.assertTrue('ip' in host)
                 self.assertTrue('public_ip' in host)
 
@@ -128,15 +137,19 @@ class OOCliFixture(OOInstallFixture):
             written_config = read_yaml(config_file)
             self._verify_config_hosts(written_config, exp_hosts_len)
 
-        self.assert_result(result, 0)
-        self._verify_load_facts(load_facts_mock)
-        self._verify_run_playbook(run_playbook_mock, exp_hosts_len, exp_hosts_to_run_on_len)
+        if "Uninstalled" in result.output:
+            # verify we exited on seeing uninstalled hosts
+            self.assertEqual(result.exit_code, 1)
+        else:
+            self.assert_result(result, 0)
+            self._verify_load_facts(load_facts_mock)
+            self._verify_run_playbook(run_playbook_mock, exp_hosts_len, exp_hosts_to_run_on_len)
 
-        # Make sure we ran on the expected masters and nodes:
-        hosts = run_playbook_mock.call_args[0][1]
-        hosts_to_run_on = run_playbook_mock.call_args[0][2]
-        self.assertEquals(exp_hosts_len, len(hosts))
-        self.assertEquals(exp_hosts_to_run_on_len, len(hosts_to_run_on))
+            # Make sure we ran on the expected masters and nodes:
+            hosts = run_playbook_mock.call_args[0][1]
+            hosts_to_run_on = run_playbook_mock.call_args[0][2]
+            self.assertEquals(exp_hosts_len, len(hosts))
+            self.assertEquals(exp_hosts_to_run_on_len, len(hosts_to_run_on))
 
 
 #pylint: disable=too-many-arguments,too-many-branches,too-many-statements

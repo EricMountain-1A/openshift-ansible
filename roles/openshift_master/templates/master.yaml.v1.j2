@@ -39,6 +39,9 @@ assetConfig:
     maxRequestsInFlight: 0
     requestTimeoutSeconds: 0
 {% if openshift_master_ha | bool %}
+{% if openshift.master.audit_config | default(none) is not none and openshift.common.version_gte_3_2_or_1_2 | bool %}
+auditConfig:{{ openshift.master.audit_config | to_padded_yaml(level=1) }}
+{% endif %}
 controllerLeaseTTL: {{ openshift.master.controller_lease_ttl | default('30') }}
 {% endif %}
 controllers: '*'
@@ -128,7 +131,21 @@ kubernetesMasterConfig:
 {% endif %}
 masterClients:
 {# TODO: allow user to set externalKubernetesKubeConfig #}
+{% if openshift.common.version_gte_3_3_or_1_3 | bool %}
+  externalKubernetesClientConnectionOverrides:
+    acceptContentTypes: application/vnd.kubernetes.protobuf,application/json
+    contentType: application/vnd.kubernetes.protobuf
+    burst: 400
+    qps: 200
+{% endif %}
   externalKubernetesKubeConfig: ""
+{% if openshift.common.version_gte_3_3_or_1_3 | bool %}
+  openshiftLoopbackClientConnectionOverrides:
+    acceptContentTypes: application/vnd.kubernetes.protobuf,application/json
+    contentType: application/vnd.kubernetes.protobuf
+    burst: 600
+    qps: 300
+{% endif %}
   openshiftLoopbackKubeConfig: openshift-master.kubeconfig
 masterPublicURL: {{ openshift.master.public_api_url }}
 networkConfig:
@@ -154,7 +171,11 @@ oauthConfig:
 {% for line in translated_identity_providers.splitlines() %}
   {{ line }}
 {% endfor %}
-  masterCA: ca.crt
+{% if openshift.common.version_gte_3_2_or_1_2 | bool %}
+  masterCA: ca-bundle.crt
+{% else %}
+  masterCA: ca.rt
+{% endif %}
   masterPublicURL: {{ openshift.master.public_api_url }}
   masterURL: {{ openshift.master.api_url }}
   sessionConfig:
@@ -187,7 +208,11 @@ serviceAccountConfig:
   - default
   - builder
   - deployer
-  masterCA: ca.crt
+{% if openshift.common.version_gte_3_2_or_1_2 | bool %}
+  masterCA: ca-bundle.crt
+{% else %}
+  masterCA: ca.rt
+{% endif %}
   privateKeyFile: serviceaccounts.private.key
   publicKeyFiles:
   - serviceaccounts.public.key
@@ -199,7 +224,7 @@ servingInfo:
   keyFile: master.server.key
   maxRequestsInFlight: {{ openshift.master.max_requests_inflight }}
   requestTimeoutSeconds: 3600
-{% if openshift.master.named_certificates %}
+{% if openshift.master.named_certificates | default([]) | length > 0 %}
   namedCertificates:
 {% for named_certificate in openshift.master.named_certificates %}
   - certFile: {{ named_certificate['certfile'] }}

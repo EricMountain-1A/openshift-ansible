@@ -37,6 +37,8 @@ class FilterModule(object):
     def get_attr(data, attribute=None):
         """ This looks up dictionary attributes of the form a.b.c and returns
             the value.
+
+            If the key isn't present, None is returned.
             Ex: data = {'a': {'b': {'c': 5}}}
                 attribute = "a.b.c"
                 returns 5
@@ -46,9 +48,14 @@ class FilterModule(object):
 
         ptr = data
         for attr in attribute.split('.'):
-            ptr = ptr[attr]
+            if attr in ptr:
+                ptr = ptr[attr]
+            else:
+                ptr = None
+                break
 
         return ptr
+
 
     @staticmethod
     def oo_flatten(data):
@@ -137,6 +144,8 @@ class FilterModule(object):
                 all([d.get(key, None) == filters[key] for key in filters]))]
         else:
             retval = [FilterModule.get_attr(d, attribute) for d in data]
+
+        retval = [val for val in retval if val != None]
 
         return retval
 
@@ -474,16 +483,20 @@ class FilterModule(object):
         """ Parses names from list of certificate hashes.
 
             Ex: certificates = [{ "certfile": "/root/custom1.crt",
-                                  "keyfile": "/root/custom1.key" },
+                                  "keyfile": "/root/custom1.key",
+                                   "cafile": "/root/custom-ca1.crt" },
                                 { "certfile": "custom2.crt",
-                                  "keyfile": "custom2.key" }]
+                                  "keyfile": "custom2.key",
+                                  "cafile": "custom-ca2.crt" }]
 
                 returns [{ "certfile": "/etc/origin/master/named_certificates/custom1.crt",
                            "keyfile": "/etc/origin/master/named_certificates/custom1.key",
+                           "cafile": "/etc/origin/master/named_certificates/custom-ca1.crt",
                            "names": [ "public-master-host.com",
                                       "other-master-host.com" ] },
                          { "certfile": "/etc/origin/master/named_certificates/custom2.crt",
                            "keyfile": "/etc/origin/master/named_certificates/custom2.key",
+                           "cafile": "/etc/origin/master/named_certificates/custom-ca-2.crt",
                            "names": [ "some-hostname.com" ] }]
         """
         if not isinstance(named_certs_dir, basestring):
@@ -514,17 +527,20 @@ class FilterModule(object):
                 raise errors.AnsibleFilterError(("|failed to parse certificate '%s', " % certificate['certfile'] +
                                                  "please specify certificate names in host inventory"))
 
-            certificate['names'] = [name for name in certificate['names'] if name not in internal_hostnames]
-            certificate['names'] = list(set(certificate['names']))
-            if not certificate['names']:
-                raise errors.AnsibleFilterError(("|failed to parse certificate '%s' or " % certificate['certfile'] +
-                                                 "detected a collision with internal hostname, please specify " +
-                                                 "certificate names in host inventory"))
+            if 'cafile' not in certificate:
+                certificate['names'] = [name for name in certificate['names'] if name not in internal_hostnames]
+                certificate['names'] = list(set(certificate['names']))
+                if not certificate['names']:
+                    raise errors.AnsibleFilterError(("|failed to parse certificate '%s' or " % certificate['certfile'] +
+                                                     "detected a collision with internal hostname, please specify " +
+                                                     "certificate names in host inventory"))
 
         for certificate in certificates:
             # Update paths for configuration
             certificate['certfile'] = os.path.join(named_certs_dir, os.path.basename(certificate['certfile']))
             certificate['keyfile'] = os.path.join(named_certs_dir, os.path.basename(certificate['keyfile']))
+            if 'cafile' in certificate:
+                certificate['cafile'] = os.path.join(named_certs_dir, os.path.basename(certificate['cafile']))
         return certificates
 
     @staticmethod
@@ -660,7 +676,7 @@ class FilterModule(object):
                         if kind == 'nfs':
                             host = params['host']
                             if host == None:
-                                if len(groups['oo_nfs_to_config']) > 0:
+                                if 'oo_nfs_to_config' in groups and len(groups['oo_nfs_to_config']) > 0:
                                     host = groups['oo_nfs_to_config'][0]
                                 else:
                                     raise errors.AnsibleFilterError("|failed no storage host detected")
@@ -803,14 +819,13 @@ class FilterModule(object):
         """
         if not isinstance(version, basestring):
             raise errors.AnsibleFilterError("|failed expects a string or unicode")
-        # TODO: Do we need to make this actually convert v1.2.0-rc1 into 1.2.0-0.rc1
-        # We'd need to be really strict about how we build the RPM Version+Release
         if version.startswith("v"):
-            version = version.replace("v", "")
+            version = version[1:]
+            # Strip release from requested version, we no longer support this.
             version = version.split('-')[0]
 
-            if include_dash:
-                version = "-" + version
+        if include_dash and version and not version.startswith("-"):
+            version = "-" + version
 
         return version
 

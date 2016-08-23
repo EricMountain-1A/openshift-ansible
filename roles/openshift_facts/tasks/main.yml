@@ -1,9 +1,4 @@
 ---
-- name: Verify Ansible version is greater than or equal to 1.9.4
-  fail:
-    msg: "Unsupported ansible version: {{ ansible_version }} found"
-  when: not ansible_version.full | version_compare('1.9.4', 'ge')
-
 - name: Detecting Operating System
   stat:
     path: /run/ostree-booted
@@ -41,3 +36,8 @@
       no_proxy: "{{ openshift_no_proxy | default(None) }}"
       generate_no_proxy_hosts: "{{ openshift_generate_no_proxy_hosts | default(True) }}"
       no_proxy_internal_hostnames: "{{ openshift_no_proxy_internal_hostnames | default(None) }}"
+
+- name: Set repoquery command
+  set_fact:
+    repoquery_cmd: "{{ 'dnf repoquery --latest-limit 1 -d 0' if ansible_pkg_mgr == 'dnf' else 'repoquery --plugins' }}"
+

@@ -25,11 +25,25 @@ debug_level=2
 # deployment type valid values are origin, online, atomic-enterprise and openshift-enterprise
 deployment_type=origin
 
+# Specify the generic release of OpenShift to install. This is used mainly just during installation, after which we
+# rely on the version running on the first master. Works best for containerized installs where we can usually
+# use this to lookup the latest exact version of the container images, which is the tag actually used to configure
+# the cluster. For RPM installations we just verify the version detected in your configured repos matches this
+# release.
+openshift_release=v1.2
+
+# Specify an exact container image tag to install or configure.
+# WARNING: This value will be used for all hosts in containerized environments, even those that have another version installed.
+# This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
+#openshift_image_tag=v1.2.0
+
+# Specify an exact rpm version to install or configure.
+# WARNING: This value will be used for all hosts in RPM based environments, even those that have another version installed.
+# This could potentially trigger an upgrade and downtime, so be careful with modifying this value after the cluster is set up.
+#openshift_pkg_version=-1.2.0
+
 # Install the openshift examples
 #openshift_install_examples=true
-
-# Enable cluster metrics
-#use_cluster_metrics=true
 
 # Configure logoutURL in the master config for console customization
 # See: https://docs.openshift.org/latest/install_config/web_console_customization.html#changing-the-logout-url
@@ -76,6 +90,13 @@ deployment_type=origin
 # Default value: "--log-driver=json-file --log-opt max-size=50m"
 #openshift_docker_options="-l warn --ipv6=false"
 
+# Specify exact version of Docker to configure or upgrade to.
+# Downgrades are not supported and will error out. Be careful when upgrading docker from < 1.10 to > 1.10.
+# docker_version="1.10.3"
+
+# Skip upgrading Docker during an OpenShift upgrade, leaves the current Docker version alone.
+# docker_upgrade=False
+
 # Alternate image format string. If you're not modifying the format string and
 # only need to inject your own registry you may want to consider
 # openshift_docker_additional_registries instead
@@ -95,7 +116,7 @@ deployment_type=origin
 # htpasswd auth
 openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
 # Defining htpasswd users
-#openshift_master_htpasswd_users={'user1': '<pre-hashed password>', 'user2': '<pre-hashed password>'
+#openshift_master_htpasswd_users={'user1': '<pre-hashed password>', 'user2': '<pre-hashed password>'}
 # or
 #openshift_master_htpasswd_file=<path to local pre-generated htpasswd file>
 
@@ -238,6 +259,9 @@ openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 
 # Provide local certificate paths which will be configured as the
 # router's default certificate.
 #openshift_hosted_router_certificate={"certfile": "/path/to/router.crt", "keyfile": "/path/to/router.key", "cafile": "/path/to/router-ca.crt"}
+#
+# Disable management of the OpenShift Router
+#openshift_hosted_manage_router=false
 
 # Openshift Registry Options
 #
@@ -259,6 +283,9 @@ openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 
 # Unless specified, openshift-ansible will calculate the replica count
 # based on the number of nodes matching the openshift registry selector.
 #openshift_hosted_registry_replicas=2
+#
+# Disable management of the OpenShift Registry
+#openshift_hosted_manage_registry=false
 
 # Registry Storage Options
 #
@@ -309,11 +336,12 @@ openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 
 # Disable the OpenShift SDN plugin
 # openshift_use_openshift_sdn=False
 
-# Configure SDN cluster network CIDR block. This network block should
-# be a private block and should not conflict with existing network
-# blocks in your infrastructure that pods may require access to.
-# Can not be changed after deployment.
+# Configure SDN cluster network and kubernetes service CIDR blocks. These
+# network blocks should be private and should not conflict with network blocks
+# in your infrastructure that pods may require access to. Can not be changed
+# after deployment.
 #osm_cluster_network_cidr=10.1.0.0/16
+#openshift_portal_net=172.30.0.0/16
 
 # Configure number of bits to allocate to each host’s subnet e.g. 8
 # would mean a /24 network on the host.
@@ -326,19 +354,38 @@ openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 
 # set RPM version for debugging purposes
 #openshift_pkg_version=-1.1
 
-# Configure custom named certificates
+# Configure custom ca certificate
+#openshift_master_ca_certificate={'certfile': '/path/to/ca.crt', 'keyfile': '/path/to/ca.key'}
+#
+# NOTE: CA certificate will not be replaced with existing clusters.
+# This option may only be specified when creating a new cluster or
+# when redeploying cluster certificates with the redeploy-certificates
+# playbook. If replacing the CA certificate in an existing cluster
+# with a custom ca certificate, the following variable must also be
+# set.
+#openshift_certificates_redeploy_ca=true
+
+# Configure custom named certificates (SNI certificates)
+#
+# https://docs.openshift.org/latest/install_config/certificate_customization.html
+#
 # NOTE: openshift_master_named_certificates is cached on masters and is an
 # additive fact, meaning that each run with a different set of certificates
 # will add the newly provided certificates to the cached set of certificates.
+#
+# An optional CA may be specified for each named certificate. CAs will
+# be added to the OpenShift CA bundle which allows for the named
+# certificate to be served for internal cluster communication.
+#
 # If you would like openshift_master_named_certificates to be overwritten with
 # the provided value, specify openshift_master_overwrite_named_certificates.
 #openshift_master_overwrite_named_certificates=true
 #
 # Provide local certificate paths which will be deployed to masters
-#openshift_master_named_certificates=[{"certfile": "/path/to/custom1.crt", "keyfile": "/path/to/custom1.key"}]
+#openshift_master_named_certificates=[{"certfile": "/path/to/custom1.crt", "keyfile": "/path/to/custom1.key", "cafile": "/path/to/custom-ca1.crt"}]
 #
 # Detected names may be overridden by specifying the "names" key
-#openshift_master_named_certificates=[{"certfile": "/path/to/custom1.crt", "keyfile": "/path/to/custom1.key", "names": ["public-master-host.com"]}]
+#openshift_master_named_certificates=[{"certfile": "/path/to/custom1.crt", "keyfile": "/path/to/custom1.key", "names": ["public-master-host.com"], "cafile": "/path/to/custom-ca1.crt"}]
 
 # Session options
 #openshift_master_session_name=ssn
@@ -435,6 +482,9 @@ openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 
 #openshift_master_api_env_vars={"ENABLE_HTTP2": "true"}
 #openshift_master_controllers_env_vars={"ENABLE_HTTP2": "true"}
 #openshift_node_env_vars={"ENABLE_HTTP2": "true"}
+
+# Enable API service auditing, available as of 1.3
+#openshift_master_audit_config={"basicAuditEnabled": true}
 
 # host group for masters
 [masters]

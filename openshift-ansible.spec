@@ -5,7 +5,7 @@
 }
 
 Name:           openshift-ansible
-Version:        3.3.1
+Version:        3.3.13
 Release:        1%{?dist}
 Summary:        Openshift and Atomic Enterprise Ansible
 License:        ASL 2.0
@@ -13,7 +13,7 @@ URL:            https://github.com/openshift/openshift-ansible
 Source0:        https://github.com/openshift/openshift-ansible/archive/%{commit}/%{name}-%{version}.tar.gz
 BuildArch:      noarch
 
-Requires:      ansible >= 1.9.4
+Requires:      ansible >= 2.1.0.0
 Requires:      python2
 Requires:      openshift-ansible-docs = %{version}-%{release}
 
@@ -69,6 +69,16 @@ cp -rp filter_plugins %{buildroot}%{_datadir}/ansible_plugins/
 
 # openshift-ansible-lookup-plugins install
 cp -rp lookup_plugins %{buildroot}%{_datadir}/ansible_plugins/
+
+# create symlinks from /usr/share/ansible/plugins/lookup ->
+# /usr/share/ansible_plugins/lookup_plugins
+pushd %{buildroot}%{_datadir}
+mkdir -p ansible/plugins
+pushd ansible/plugins
+ln -s ../../ansible_plugins/lookup_plugins lookup
+ln -s ../../ansible_plugins/filter_plugins filter
+popd
+popd
 
 # atomic-openshift-utils install
 pushd utils
@@ -168,6 +178,7 @@ Requires:      pyOpenSSL
 
 %files filter-plugins
 %{_datadir}/ansible_plugins/filter_plugins
+%{_datadir}/ansible/plugins/filter
 
 
 # ----------------------------------------------------------------------------------
@@ -183,6 +194,7 @@ BuildArch:     noarch
 
 %files lookup-plugins
 %{_datadir}/ansible_plugins/lookup_plugins
+%{_datadir}/ansible/plugins/lookup
 
 # ----------------------------------------------------------------------------------
 # atomic-openshift-utils subpackage
@@ -209,6 +221,325 @@ Atomic OpenShift Utilities includes
 
 
 %changelog
+* Fri Aug 19 2016 Troy Dawson <tdawson@redhat.com> 3.3.13-1
+- Fix warnings in OpenStack provider with ansible 2.1 (lhuard@amadeus.com)
+- Mount /sys rw (sdodson@redhat.com)
+- Update uninstall.yml (sdodson@redhat.com)
+- Fix padding on registry config (sdodson@redhat.com)
+
+* Wed Aug 17 2016 Troy Dawson <tdawson@redhat.com> 3.3.12-1
+- Fixes to typos, grammar, and product branding in cli_installer
+  (tpoitras@redhat.com)
+- Reconcile roles after master upgrade, but before nodes. (dgoodwin@redhat.com)
+- a-o-i: Fix nosetests after removing 3.2 from installer (smunilla@redhat.com)
+- Bug 1367323 - the "OpenShift Container Platform 3.2" variant is still listed
+  when quick install ose-3.3 (smunilla@redhat.com)
+- Bug 1367199 - iptablesSyncPeriod should default to 30s OOTB
+  (smunilla@redhat.com)
+- Sync remaining content (sdodson@redhat.com)
+- XPaas 1.3.3 (sdodson@redhat.com)
+- a-o-i: Fix broken tests from installed hosts check (smunilla@redhat.com)
+- Add clientCommonNames to RequestHeaderProvider optional items
+  (sdodson@redhat.com)
+- a-o-i: Mapping for 3.2 Upgrades (smunilla@redhat.com)
+- a-o-i: fix bz#1329455 (ghuang@redhat.com)
+- Add nfs group to OSEv3:vars (sdodson@redhat.com)
+- fixing openshift key error in case of node failure during run (ssh issue)
+  (jawed.khelil@amadeus.com)
+- add 3.3 to installer (rmeggins@redhat.com)
+
+* Mon Aug 15 2016 Troy Dawson <tdawson@redhat.com> 3.3.11-1
+- Ensure etcd user exists in etcd_server_certificates by installing etcd.
+  (abutcher@redhat.com)
+- a-o-i: Fix broken upgrades (smunilla@redhat.com)
+
+* Fri Aug 12 2016 Troy Dawson <tdawson@redhat.com> 3.3.10-1
+- Reference tmpdir from first master hostvars when evacuating nodes.
+  (abutcher@redhat.com)
+- Support for redeploying certificates. (abutcher@redhat.com)
+- qps typo (deads@redhat.com)
+- a-o-i: Automatically Label Nodes as Infra (smunilla@redhat.com)
+- Improvements for Docker 1.10+ upgrade image nuking. (dgoodwin@redhat.com)
+- a-o-i: Restrict installed host check (smunilla@redhat.com)
+- Shutdown Docker before upgrading the rpm. (dgoodwin@redhat.com)
+- Restrict the middleware stanza contains 'registry' and 'storage' at least on
+  3.3 (ghuang@redhat.com)
+- docker-registry's middleware stanza should contain 'registry' and 'storage'
+  by default (ghuang@redhat.com)
+
+* Wed Aug 10 2016 Troy Dawson <tdawson@redhat.com> 3.3.9-1
+- Enable 'NoVolumeZoneConflict' policy for scheduler (abutcher@redhat.com)
+- a-o-i: Update nosetests for ansible_ssh_user (smunilla@redhat.com)
+- move ansible_ssh_user to deployment, remove ansible_config and
+  ansible_log_path (ghuang@redhat.com)
+- Labeling nodes only (ghuang@redhat.com)
+- Set become=no for etcd server certificates temporary directory.
+  (abutcher@redhat.com)
+- Move storage includes up to main. (abutcher@redhat.com)
+- Support gathering ansible 2.1/2.2 system facts (abutcher@redhat.com)
+- Try/except urlparse calls. (abutcher@redhat.com)
+- with_fileglob no longer supports wildcard prefixes. (abutcher@redhat.com)
+- BUILD.md lies (jmainguy@redhat.com)
+- Migrate ca.crt to ca-bundle.crt (sdodson@redhat.com)
+- Upgrade configs for protobuf support. (dgoodwin@redhat.com)
+- Fixed a bug in modify_yaml module. (dgoodwin@redhat.com)
+- make the improved log formatter work with ansible 2.1 (rmeggins@redhat.com)
+- Convert ansible facts callback to v2. (abutcher@redhat.com)
+- Add 3.3 protobuf config stanzas for master/node config. (dgoodwin@redhat.com)
+- Introduce 1.3/3.3 upgrade path. (dgoodwin@redhat.com)
+
+* Mon Aug 08 2016 Troy Dawson <tdawson@redhat.com> 3.3.8-1
+- Fix little mistake in openshift_master_htpasswd_users value .
+  (jmferrer@paradigmatecnologico.com)
+
+* Fri Aug 05 2016 Troy Dawson <tdawson@redhat.com> 3.3.7-1
+- Call relocated openshift-loadbalancer playbook in master scaleup.
+  (abutcher@redhat.com)
+- [openshift_ca] correct check for missing CA. (abutcher@redhat.com)
+- a-o-i: Rename OSE in Install Menu (smunilla@redhat.com)
+- a-o-i: Allow Arbitrary Deployment Variables (smunilla@redhat.com)
+- Add knobs for disabling router/registry management. (abutcher@redhat.com)
+- Restore missing etcd_image fact. (abutcher@redhat.com)
+- Add options for specifying named ca certificates to be added to the openshift
+  ca bundle. (abutcher@redhat.com)
+- oo_collect can be ran against dicts where key isn't present.
+  (abutcher@redhat.com)
+- Don't set a networkPluginName in 3.3 installs (sdodson@redhat.com)
+
+* Wed Aug 03 2016 Troy Dawson <tdawson@redhat.com> 3.3.6-1
+- Rename router and registry node list variables. (abutcher@redhat.com)
+- a-o-i: Fix broken uninstall (smunilla@redhat.com)
+- Refactor etcd certificates roles. (abutcher@redhat.com)
+
+* Mon Aug 01 2016 Troy Dawson <tdawson@redhat.com> 3.3.5-1
+- Update for issue#2244 (kunallimaye@gmail.com)
+- Update for issue-2244 (kunallimaye@gmail.com)
+- a-o-i: Remove AEP, OSE 3.0, and OSE 3.2 choices (smunilla@redhat.com)
+- Move role dependencies to playbooks. (abutcher@redhat.com)
+- Fix xpaas_templates_base (sdodson@redhat.com)
+- a-o-i: Better inventory group handling (smunilla@redhat.com)
+- Add dotnet image stream to enterprise installs (sdodson@redhat.com)
+- Fix haproxy logs (sdodson@redhat.com)
+- update bootstrap-fedora playbook with new python crypto deps
+  (maxamillion@fedoraproject.org)
+- Remove old sso70-basic templates (sdodson@redhat.com)
+- xPaaS v1.3.2 release (sdodson@redhat.com)
+
+* Fri Jul 29 2016 Troy Dawson <tdawson@redhat.com> 3.3.4-1
+- a-o-i: Set roles on standalone storage (smunilla@redhat.com)
+- Disable too many branches pylint (sdodson@redhat.com)
+- a-o-i: write missing openshift_node_labels (dkorn@redhat.com)
+- a-o-i: Support for arbitrary host-level variables (smunilla@redhat.com)
+- Beautiful -v output from ansible (jamespic@gmail.com)
+- a-o-i: Move inventory vars to the correct location (smunilla@redhat.com)
+- Fix registry/router being created despite no infra nodes.
+  (dgoodwin@redhat.com)
+- Document openshift_portal_net (sdodson@redhat.com)
+- Stagger the start of master services. (abutcher@redhat.com)
+- make rpm-q module pylint warning-free (tob@butter.sh)
+- add rpm_q module to query rpm database (tob@butter.sh)
+
+* Wed Jul 27 2016 Troy Dawson <tdawson@redhat.com> 3.3.3-1
+- Template named certificates with_items. (abutcher@redhat.com)
+- Replace master_cert_config_dir with common config_base fact.
+  (abutcher@redhat.com)
+- remove outdated openshift_cluster_metrics role (jdetiber@redhat.com)
+- Fix "deloyment" typo in deployment types doc (lxia@redhat.com)
+- Add missing nuke_images.sh symlink. (dgoodwin@redhat.com)
+- a-o-i: Persist Roles Variables (smunilla@redhat.com)
+- Default nodes matching selectors when not collected. (abutcher@redhat.com)
+- Copy openshift binaries instead of using wrapper script.
+  (dgoodwin@redhat.com)
+- Correct relative include for ansible version check. (abutcher@redhat.com)
+- Fix libvirt provider for Ansible 2.1.0.0 (lhuard@amadeus.com)
+- Re-arrange master and node role dependencies. (abutcher@redhat.com)
+- Refactor openshift certificates roles. (abutcher@redhat.com)
+- Check ansible version prior to evaluating cluster hosts and groups.
+  (abutcher@redhat.com)
+- Stop reporting changes when docker pull is already up to date.
+  (dgoodwin@redhat.com)
+- a-o-i: Write Role variable groups (smunilla@redhat.com)
+- Slight modification to error when using mismatched openshift_release.
+  (dgoodwin@redhat.com)
+- fix "databcase" typo in example roles (lxia@redhat.com)
+- Secure router only when openshift.hosted.router.certificate.contents exists.
+  (abutcher@redhat.com)
+- Add jenkinstemplate (sdodson@redhat.com)
+- Fix bugs with origin 1.2 rpm based upgrades. (dgoodwin@redhat.com)
+- Sync latest image streams and templates (sdodson@redhat.com)
+- Ensure 'oo_nfs_to_config' in groups prior to checking group length when nfs
+  host unset. (abutcher@redhat.com)
+- We have proper ansible support and requirements in place now, de-revert this
+  commit (tbielawa@redhat.com)
+- Skip docker upgrades on Atomic. (dgoodwin@redhat.com)
+- Resolve some deprecation warnings. (abutcher@redhat.com)
+- a-o-i: Looser facts requirements for unattended (smunilla@redhat.com)
+- Temporarily link registry config templates for ansible 1.9.x support.
+  (abutcher@redhat.com)
+- Remove relative lookup for registry config and check for skipped update in
+  registry redeploy conditional. (abutcher@redhat.com)
+- Arbitrary Installer yaml (smunilla@redhat.com)
+- Check for existence of sebooleans prior to setting. (abutcher@redhat.com)
+- Require ansible-2.1 (abutcher@redhat.com)
+
+* Sun Jul 17 2016 Scott Dodson <sdodson@redhat.com> 3.3.2-1
+- Convert openshift_release and openshift_version to strings for startswith
+  (sdodson@redhat.com)
+- Symlink ansible 2.x locations to ansible 1.9 locations (sdodson@redhat.com)
+- Clarify message when old docker pre-installed but 1.10+ requested.
+  (dgoodwin@redhat.com)
+- Fix quick install 3.2 upgrade path. (dgoodwin@redhat.com)
+- Fix upgrade with docker_version set. (dgoodwin@redhat.com)
+- Move the bash completion into the cli role. Only add when not containerized
+  (tbielawa@redhat.com)
+- [master] add support for setting auditConfig (jdetiber@redhat.com)
+- Remove too recent pylint option keys. (dgoodwin@redhat.com)
+- pylint fixes (dgoodwin@redhat.com)
+- Install bash-completion package for the oc/oadm tools (tbielawa@redhat.com)
+- Fix more docker role logic. (dgoodwin@redhat.com)
+- Add checks to docker role for 1.9.1+. (dgoodwin@redhat.com)
+- Make libvirt’s VM use virtio-scsi insteal of virtio-blk
+  (lhuard@amadeus.com)
+- Fix erroneous pylint error (smunilla@redhat.com)
+- Remove 3.0 and 3.1 upgrade sub-dirs. (dgoodwin@redhat.com)
+- Rename upgrade to just v3_2 as it's now major and minor.
+  (dgoodwin@redhat.com)
+- Set registry replicas = 1 when no storage specified. (abutcher@redhat.com)
+- Re-align the OpenStack firewall rules with the iptables rules
+  (lhuard@amadeus.com)
+- Fix bin/cluster openstack related error (lhuard@amadeus.com)
+- Fix upgrades with an openshift_image_tag set. (dgoodwin@redhat.com)
+- ops-docker-loopback-to-direct-lvm.yml: fix typo on the variable name
+  "cli_name vs cli_host" (gael.lambert@redhat.com)
+- Remove cleanup code from 1.0 to 1.1 upgrade era (sdodson@redhat.com)
+- Move repoquery_cmd fact setting into a more logical place.
+  (dgoodwin@redhat.com)
+- Add dependency on docker to openshift_docker role. (dgoodwin@redhat.com)
+- Enable pullthrough by default in registry config for object storage.
+  (abutcher@redhat.com)
+- Fix gpg key path (sdodson@redhat.com)
+- Use proper startswith. (dgoodwin@redhat.com)
+- Sync latest image stream content (sdodson@redhat.com)
+- Role dependency cleanup (abutcher@redhat.com)
+- Fix up some broken markdown formatting (mostly tables) (tbielawa@redhat.com)
+- Rename things to avoid conflicts with paas sig release rpms
+  (sdodson@redhat.com)
+- Remove/update TODOs. (dgoodwin@redhat.com)
+- Remove all debug used during devel of openshift_version.
+  (dgoodwin@redhat.com)
+- Update quick upgrade to remove unsupported options. (dgoodwin@redhat.com)
+- Don't special case origin on centos (sdodson@redhat.com)
+- Various hosted component improvements (abutcher@redhat.com)
+- Move repoquery fact definition to openshift_common. (dgoodwin@redhat.com)
+- Clean up some deprecation warnings (tbielawa@redhat.com)
+- Add CentOS PaaS SIG repos for RHEL (sdodson@redhat.com)
+- Remove Origin 1.1 as an option (smunilla@redhat.com)
+- Make /var/lib/origin mounted rslave (sdodson@redhat.com)
+- fix "hapoxy" typo in loadbalancer playbook (Mathias.Merscher@dg-i.net)
+- Fix dnf variant of rpm_versions.sh (sdodson@redhat.com)
+- Make image stream munging optional (sdodson@redhat.com)
+- Add aos-3.3 to tito releasers.conf (sdodson@redhat.com)
+- Add symlinks for node templates. (dgoodwin@redhat.com)
+- Fixes for Ansible 2.1. (dgoodwin@redhat.com)
+- Update repoquery_cmd definitions to match latest in master.
+  (dgoodwin@redhat.com)
+- Fix unsafe bool usage. (dgoodwin@redhat.com)
+- Fix typo in example inventories. (dgoodwin@redhat.com)
+- Fixes for non-containerized separate etcd hosts. (dgoodwin@redhat.com)
+- More docker upgrade fixes. (dgoodwin@redhat.com)
+- Only nuke images when crossing the Docker 1.10 boundary in upgrade.
+  (dgoodwin@redhat.com)
+- Fix node/openvswitch containers not restarting after upgrade.
+  (dgoodwin@redhat.com)
+- Allow skipping Docker upgrade during OpenShift upgrade. (dgoodwin@redhat.com)
+- a-o-i: Add Origin 1.2 Installs (smunilla@redhat.com)
+- a-o-i: Add support for installing OpenShift Origin (smunilla@redhat.com)
+- Refactor 3.2 upgrade to avoid killing nodes without evac.
+  (dgoodwin@redhat.com)
+- Update docker upgrade playbook to be more flexible. (dgoodwin@redhat.com)
+- Add missing defaults file. (dgoodwin@redhat.com)
+- Use common fact initialization include in upgrade. (dgoodwin@redhat.com)
+- Fix use of v3.2 format for openshift_release in upgrade.
+  (dgoodwin@redhat.com)
+- Remove more legacy upgrade playbooks. (dgoodwin@redhat.com)
+- Fix docker restarts during openshift_version role. (dgoodwin@redhat.com)
+- Support setting a docker version in inventory. (dgoodwin@redhat.com)
+- Fix version facts with trailing newline. (dgoodwin@redhat.com)
+- Document the new and old version variables. (dgoodwin@redhat.com)
+- Normalize some of the version inventory vars which users might mistakenly
+  enter wrong. (dgoodwin@redhat.com)
+- Check that detected version matches openshift_release in rpm installations.
+  (dgoodwin@redhat.com)
+- Block attempts to install origin without specifying any release info.
+  (dgoodwin@redhat.com)
+- More stable lookup of running openshift version. (dgoodwin@redhat.com)
+- Upgrade fixes. (dgoodwin@redhat.com)
+- Fix typo in facts. (dgoodwin@redhat.com)
+- Cleanup, fix 3.1 version bug in facts. (dgoodwin@redhat.com)
+- More version fixes. (dgoodwin@redhat.com)
+- Support origin alpha tags. (dgoodwin@redhat.com)
+- More stable containerized version lookup. (dgoodwin@redhat.com)
+- Remove old upgrade playbooks. (dgoodwin@redhat.com)
+- Fix performance hit in openshift_facts. (dgoodwin@redhat.com)
+- Always populate openshift_image_tag and openshift_pkg_version.
+  (dgoodwin@redhat.com)
+- Remove the use of the upgrading variable. (dgoodwin@redhat.com)
+- Don't be specific about rpm version to upgrade to for now.
+  (dgoodwin@redhat.com)
+- Restore 3.2 RPM version check before upgrading. (dgoodwin@redhat.com)
+- Make openshift_version role docker dep conditional. (dgoodwin@redhat.com)
+- Fix rpm installs. (dgoodwin@redhat.com)
+- Temporary fix for upgrading issue. (dgoodwin@redhat.com)
+- Remove unused docker facts tasks. (dgoodwin@redhat.com)
+- Fix version unset bug, and set common ver fact on containerized nodes.
+  (dgoodwin@redhat.com)
+- Fix missing openshift.common.version fact on containerized nodes.
+  (dgoodwin@redhat.com)
+- Begin major simplification of 3.2 upgrade. (dgoodwin@redhat.com)
+- Respect image tag/pkg version during upgrade. (dgoodwin@redhat.com)
+- Force version to latest 3.2 during upgrade. (dgoodwin@redhat.com)
+- Verify openshift_release is correct or absent in inventory before upgrade.
+  (dgoodwin@redhat.com)
+- Drop unused and broken "when" in vars section. (dgoodwin@redhat.com)
+- Do not install rpm for version in openshift_version role.
+  (dgoodwin@redhat.com)
+- Fix bin/cluster libvirt related error (jdetiber@redhat.com)
+- Update openshift_version author info. (dgoodwin@redhat.com)
+- Fix installing release 3.1 not converting to precise version.
+  (dgoodwin@redhat.com)
+- Stop requiring/using first master version fact and use openshift_version var
+  instead. (dgoodwin@redhat.com)
+- Break version calc out into a role, separate yaml for containerized/rpm.
+  (dgoodwin@redhat.com)
+- Drop unnecessary node playbook version calculation. (dgoodwin@redhat.com)
+- Add leading v for remaining IMAGE_VERSION templates. (dgoodwin@redhat.com)
+- Fix error restarting master service that may not be there.
+  (dgoodwin@redhat.com)
+- Fix use of openshift_version in ca role. (dgoodwin@redhat.com)
+- Fix image tag to rpm version filter. (dgoodwin@redhat.com)
+- Fix error with containerized etcd install. (dgoodwin@redhat.com)
+- Refactor openshift_version behavior. (dgoodwin@redhat.com)
+- Protect installed version on subsequent masters. (dgoodwin@redhat.com)
+- Get rpm installations functional again. (dgoodwin@redhat.com)
+- Convert generic openshift_version=3.2 to specific early in install.
+  (dgoodwin@redhat.com)
+- Preserve node versions on re-run. (dgoodwin@redhat.com)
+- Fix version compare with using just 3.2 or 1.2. (dgoodwin@redhat.com)
+- Hookup node configuration. (dgoodwin@redhat.com)
+- Complete installation of first master containerized. (dgoodwin@redhat.com)
+- Stop downgrading Docker because we don't know what version to install yet.
+  (dgoodwin@redhat.com)
+- Work towards determining openshift_version when unspecified.
+  (dgoodwin@redhat.com)
+- Remove now unnecessary pull and ver check in openshift_docker role.
+  (dgoodwin@redhat.com)
+- Set openshift_version in config playbooks for first master.
+  (dgoodwin@redhat.com)
+- Debug output. (dgoodwin@redhat.com)
+- cleanup broken symlinks - lookup_plugins filter_plugins (tdawson@redhat.com)
+- Add libselinux-python as a dependency for the installation process
+  (frederic.boulet@gmail.com)
+
 * Tue Jul 05 2016 Scott Dodson <sdodson@redhat.com> 3.3.1-1
 - Add v1.3 examples (sdodson@redhat.com)
 - Change the examples content sync directory (sdodson@redhat.com)

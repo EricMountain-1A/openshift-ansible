@@ -33,25 +33,30 @@ class Variant(object):
         return self.versions[0]
 
 
-# WARNING: Keep the versions ordered, most recent last:
-OSE = Variant('openshift-enterprise', 'OpenShift Enterprise',
+# WARNING: Keep the versions ordered, most recent first:
+OSE = Variant('openshift-enterprise', 'OpenShift Container Platform',
     [
-        Version('3.2', 'openshift-enterprise'),
-        Version('3.1', 'openshift-enterprise'),
-        Version('3.0', 'enterprise')
+        Version('3.3', 'openshift-enterprise'),
     ]
 )
 
-AEP = Variant('atomic-enterprise', 'Atomic Enterprise Platform',
+origin = Variant('origin', 'OpenShift Origin',
     [
-        Version('3.2', 'atomic-enterprise'),
-        Version('3.1', 'atomic-enterprise')
+        Version('1.2', 'origin'),
+    ]
+)
+
+LEGACY = Variant('openshift-enterprise', 'OpenShift Container Platform',
+    [
+        Version('3.2', 'openshift-enterprise'),
+        Version('3.1', 'openshift-enterprise'),
+        Version('3.0', 'openshift-enterprise'),
     ]
 )
 
 # Ordered list of variants we can install, first is the default.
-SUPPORTED_VARIANTS = (OSE, AEP)
-
+SUPPORTED_VARIANTS = (OSE, origin, LEGACY)
+DISPLAY_VARIANTS = (OSE, )
 
 def find_variant(name, version=None):
     """
@@ -72,7 +77,7 @@ def find_variant(name, version=None):
 
 def get_variant_version_combos():
     combos = []
-    for variant in SUPPORTED_VARIANTS:
+    for variant in DISPLAY_VARIANTS:
         for ver in variant.versions:
             combos.append((variant, ver))
     return combos
