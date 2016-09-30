@@ -5,7 +5,7 @@
 }
 
 Name:           openshift-ansible
-Version:        3.3.13
+Version:        3.4.2
 Release:        1%{?dist}
 Summary:        Openshift and Atomic Enterprise Ansible
 License:        ASL 2.0
@@ -70,6 +70,9 @@ cp -rp filter_plugins %{buildroot}%{_datadir}/ansible_plugins/
 # openshift-ansible-lookup-plugins install
 cp -rp lookup_plugins %{buildroot}%{_datadir}/ansible_plugins/
 
+# openshift-ansible-callback-plugins install
+cp -rp callback_plugins %{buildroot}%{_datadir}/ansible_plugins/
+
 # create symlinks from /usr/share/ansible/plugins/lookup ->
 # /usr/share/ansible_plugins/lookup_plugins
 pushd %{buildroot}%{_datadir}
@@ -77,6 +80,7 @@ mkdir -p ansible/plugins
 pushd ansible/plugins
 ln -s ../../ansible_plugins/lookup_plugins lookup
 ln -s ../../ansible_plugins/filter_plugins filter
+ln -s ../../ansible_plugins/callback_plugins callback
 popd
 popd
 
@@ -87,11 +91,15 @@ pushd utils
 mv -f %{buildroot}%{_bindir}/oo-install %{buildroot}%{_bindir}/atomic-openshift-installer
 mkdir -p %{buildroot}%{_datadir}/atomic-openshift-utils/
 cp etc/ansible.cfg %{buildroot}%{_datadir}/atomic-openshift-utils/ansible.cfg
+mkdir -p %{buildroot}%{_mandir}/man1/
+cp -v docs/man/man1/atomic-openshift-installer.1 %{buildroot}%{_mandir}/man1/
+cp etc/ansible-quiet.cfg %{buildroot}%{_datadir}/atomic-openshift-utils/ansible-quiet.cfg
 popd
 
 # Base openshift-ansible files
 %files
-%doc LICENSE.md README*
+%doc README*
+%license LICENSE
 %dir %{_datadir}/ansible/%{name}
 %{_datadir}/ansible/%{name}/library
 %ghost %{_datadir}/ansible/%{name}/playbooks/common/openshift-master/library.rpmmoved
@@ -119,6 +127,7 @@ Requires:      %{name} = %{version}
 Requires:      %{name}-roles = %{version}
 Requires:      %{name}-lookup-plugins = %{version}
 Requires:      %{name}-filter-plugins = %{version}
+Requires:      %{name}-callback-plugins = %{version}
 BuildArch:     noarch
 
 %description playbooks
@@ -155,6 +164,7 @@ Summary:       Openshift and Atomic Enterprise Ansible roles
 Requires:      %{name} = %{version}
 Requires:      %{name}-lookup-plugins = %{version}
 Requires:      %{name}-filter-plugins = %{version}
+Requires:      %{name}-callback-plugins = %{version}
 BuildArch:     noarch
 
 %description roles
@@ -196,6 +206,22 @@ BuildArch:     noarch
 %{_datadir}/ansible_plugins/lookup_plugins
 %{_datadir}/ansible/plugins/lookup
 
+
+# ----------------------------------------------------------------------------------
+# openshift-ansible-callback-plugins subpackage
+# ----------------------------------------------------------------------------------
+%package callback-plugins
+Summary:       Openshift and Atomic Enterprise Ansible callback plugins
+Requires:      %{name} = %{version}
+BuildArch:     noarch
+
+%description callback-plugins
+%{summary}.
+
+%files callback-plugins
+%{_datadir}/ansible_plugins/callback_plugins
+%{_datadir}/ansible/plugins/callback
+
 # ----------------------------------------------------------------------------------
 # atomic-openshift-utils subpackage
 # ----------------------------------------------------------------------------------
@@ -218,9 +244,231 @@ Atomic OpenShift Utilities includes
 %{python_sitelib}/ooinstall*
 %{_bindir}/atomic-openshift-installer
 %{_datadir}/atomic-openshift-utils/ansible.cfg
+%{_mandir}/man1/*
+%{_datadir}/atomic-openshift-utils/ansible-quiet.cfg
 
 
 %changelog
+* Mon Sep 26 2016 Scott Dodson <sdodson@redhat.com> 3.4.2-1
+- Add an issue template (sdodson@redhat.com)
+- Add openshift_hosted_router_name (andrew@andrewklau.com)
+- Fix master service status changed fact. (abutcher@redhat.com)
+- Clarify openshift_hosted_metrics_public_url (sdodson@redhat.com)
+- Add GCE cloud provider kind. (abutcher@redhat.com)
+- add documentation about the openshift_hosted_metrics_public_url option
+  (kobi.zamir@gmail.com)
+- Split openshift_builddefaults_no_proxy if it's not a list
+  (sdodson@redhat.com)
+- Fix references to openshift.master.sdn_cluster_network_cidr in node roles
+  (sdodson@redhat.com)
+- Update the OpenStack dynamic inventory script (lhuard@amadeus.com)
+- move LICENSE to /usr/share/licenses/openshift-ansible-VERSION/
+  (nakayamakenjiro@gmail.com)
+- [uninstall] Stop services on all hosts prior to removing files.
+  (abutcher@redhat.com)
+- Do not create volume claims for hosted components when storage type is
+  object. (abutcher@redhat.com)
+- Add portal_net and sdn_cluster_network_cidr to node NO_PROXY
+  (sdodson@redhat.com)
+- Add origin-node.service.wants to uninstall (andrew@andrewklau.com)
+- Update README.md (sdodson@redhat.com)
+- Add 'MaxGCEPDVolumeCount' to default scheduler predicates.
+  (abutcher@redhat.com)
+- Switch to origin-1.x branch names (sdodson@redhat.com)
+- Open ports for vxlan and Nuage monitor (vishal.patil@nuagenetworks.net)
+- Add role to manageiq to allow creation of projects (azellner@redhat.com)
+- Add 'MaxEBSVolumeCount' to default scheduler predicates.
+  (abutcher@redhat.com)
+- a-o-i: Don't set unschedulable nodes as infra (smunilla@redhat.com)
+- [redeploy-certificates] Set default value for
+  openshift_master_default_subdomain as workaround. (abutcher@redhat.com)
+- [redeploy-certificates] Correct etcd service name. (abutcher@redhat.com)
+- [upgrade] Create/configure service signer cert when missing.
+  (abutcher@redhat.com)
+- get quickstarts from origin, not upstream example repos (bparees@redhat.com)
+- Define proxy settings for node services (sdodson@redhat.com)
+- Check for use_openshift_sdn when restarting openvswitch.
+  (abutcher@redhat.com)
+- Move delegated_serial_command module to etcd_common. (abutcher@redhat.com)
+- Fix README links. (abutcher@redhat.com)
+- Check for is_atomic when uninstalling flannel package. (abutcher@redhat.com)
+- Add atomic-guest tuned profile (andrew.lau@newiteration.com)
+- Pause after restarting openvswitch in containerized upgrade.
+  (dgoodwin@redhat.com)
+- Add acceptschema2 and enforcequota settings for hosted registry
+  (andrew.lau@newiteration.com)
+- Always deduplicate detected certificate names (elyscape@gmail.com)
+- Add option for specifying s3 registry storage root directory.
+  (abutcher@redhat.com)
+- Set config/namespace where missing for secure registry deployment.
+  (abutcher@redhat.com)
+- Flush handlers before marking a node schedulable after upgrade.
+  (dgoodwin@redhat.com)
+- Iterate over node inventory hostnames instead of openshift.common.hostname
+  within openshift_manage_node role. (abutcher@redhat.com)
+- a-o-i: Do not display version number in quick installer (smunilla@redhat.com)
+- Explain our branching strategy (sdodson@redhat.com)
+- Fix warnings (mkumatag@in.ibm.com)
+- Don't loop over hostvars when setting node schedulability.
+  (abutcher@redhat.com)
+- Copy admin kubeconfig in openshift_manage_node role. (abutcher@redhat.com)
+- Adjust to_padded_yaml transformation to use the AnsibleDumper
+  (tbielawa@redhat.com)
+- Secure registry for atomic registry deployment (deployment_subtype=registry).
+  (abutcher@redhat.com)
+- Record schedulability of node prior to upgrade and re-set it to that
+  (sdodson@redhat.com)
+- Fix string substitution error in the to_padded_yaml filter
+  (tbielawa@redhat.com)
+- Update image stream data (sdodson@redhat.com)
+- Fix ops/qps typo (jliggitt@redhat.com)
+- initial support for v1.3 with logging v1.3 (rmeggins@redhat.com)
+- Only prompt for proxy vars if none are set and our version recognizes them
+  (tbielawa@redhat.com)
+- Don't advise people to use additional registries over oreg_url
+  (sdodson@redhat.com)
+- Persist net.ipv4.ip_forward sysctl entry for openshift nodes
+  (tbielawa@redhat.com)
+- Add flannel package removal in uninstallation playbook (mkumatag@in.ibm.com)
+- This fixes an issue in AWS where the master node was not part of the nodes in
+  an unschedulable way (mdanter@gmail.com)
+- Don't attempt to create retry files (tbielawa@redhat.com)
+- Fix nuage check. (abutcher@redhat.com)
+- Change test requirements file name (tbielawa@redhat.com)
+- Fix review comments (mkumatag@in.ibm.com)
+- Try installing setuptools before the rest of the requirements
+  (tbielawa@redhat.com)
+- Switch to using a requirements.txt file and ensure that setuptools is pinned
+  to the latest version available on RHEL7 (tbielawa@redhat.com)
+- Try using parse_version from pkg_resources instead (tbielawa@redhat.com)
+- Add missing pip requirement to virtualenv (tbielawa@redhat.com)
+- Fix PyLint errors discovered when upgrading to newer version
+  (tbielawa@redhat.com)
+- Bug 1369410 - uninstall fail at task [restart docker] on atomic-host
+  (bleanhar@redhat.com)
+- Fix typo (mkumatag@in.ibm.com)
+- Fix errors in docker role (mkumatag@in.ibm.com)
+- Allow overriding the Docker 1.10 requirement for upgrade.
+  (dgoodwin@redhat.com)
+- skip if the objects already exist (rmeggins@redhat.com)
+- create and process the logging deployer template in the current project,
+  logging (rmeggins@redhat.com)
+- do not create logging project if it already exists (rmeggins@redhat.com)
+
+* Thu Sep 01 2016 Scott Dodson <sdodson@redhat.com> 3.4.1-1
+- Bump to 3.4.0
+
+* Wed Aug 31 2016 Scott Dodson <sdodson@redhat.com> 3.3.20-1
+- Restore network plugin configuration (sdodson@redhat.com)
+- Remove openshift_master_metrics_public_url (abutcher@redhat.com)
+- Bug 1371836 - The variant should be Registry 3.3 (smunilla@redhat.com)
+
+* Wed Aug 31 2016 Troy Dawson <tdawson@redhat.com> 3.3.19-1
+- update flannel_subnet_len default value (mkumatag@in.ibm.com)
+- Reload docker facts after upgrading docker (sdodson@redhat.com)
+
+* Tue Aug 30 2016 Scott Dodson <sdodson@redhat.com> 3.3.18-1
+- Enable dynamic storage (sdodson@redhat.com)
+- Change how we set master's metricsPublicURL (sdodson@redhat.com)
+- update kubelet argument example with references to new pods-per-core and new
+  max-pods threshold for 3.3 (jeder@redhat.com)
+- update kubelet argument example with references to new pods-per-core and new
+  max-pods threshold for 3.3 (jeder@redhat.com)
+
+* Mon Aug 29 2016 Scott Dodson <sdodson@redhat.com> 3.3.17-1
+- Reload units after node container service modified. (dgoodwin@redhat.com)
+- Fix flannel check (mkumatag@in.ibm.com)
+- Default to port 80 when deploying cockpit-ui (smunilla@redhat.com)
+- Set cloudprovider kind with openshift_facts. (abutcher@redhat.com)
+- Fix openstack cloudprovider template conditional. (abutcher@redhat.com)
+
+* Sat Aug 27 2016 Scott Dodson <sdodson@redhat.com> 3.3.16-1
+- Sync image stream data (sdodson@redhat.com)
+- Update metrics example inventories (sdodson@redhat.com)
+- Preserve AWS options in sysconfig files. (dgoodwin@redhat.com)
+- Fix metrics for containerized installs (sdodson@redhat.com)
+- Cleanup items botched during rebase (sdodson@redhat.com)
+- add check for server and account already exist (mangirdas@judeikis.lt)
+- add run_once to repeatable actions (mangirdas@judeikis.lt)
+- Remove atomic check and cockpit.socket (smunilla@redhat.com)
+- Re-organize registry-console deployment. (abutcher@redhat.com)
+- Add registry console template (aweiteka@redhat.com)
+- Add support for Atomic Registry Installs (smunilla@redhat.com)
+- Apply indentation changes to some other lines (tbielawa@redhat.com)
+- Don't use openshift_env for cloud provider facts. (abutcher@redhat.com)
+- Enable PEP8 tests by default in the 'make ci' target now
+  (tbielawa@redhat.com)
+- Fix PEP8 errors in cli_installer.py (tbielawa@redhat.com)
+- Fix PEP8 in openshift_ansible.py (tbielawa@redhat.com)
+- Fix PEP8 in oo_config.py (tbielawa@redhat.com)
+- Fix PEP8 in variants.py (tbielawa@redhat.com)
+- Fix PEP8 in facts_callback.py (tbielawa@redhat.com)
+- fix duplicate src field (jdetiber@redhat.com)
+- Refactor volume directory creation (sdodson@redhat.com)
+- Rely on IMAGE_PREFIX and IMAGE_VERSION defaults from the templates themselves
+  (sdodson@redhat.com)
+- Add metrics exports to nfs role, move exports to /etc/exports.d/openshift-
+  ansible.exports (sdodson@redhat.com)
+- Add ability to disable pvc creation (sdodson@redhat.com)
+- Fix registry volume (sdodson@redhat.com)
+- add selectors for metrics and logging (sdodson@redhat.com)
+- Add logic to detect existing installs (sdodson@redhat.com)
+- Deploy metrics after our router (sdodson@redhat.com)
+- Add Enterprise 3.3 template (sdodson@redhat.com)
+- Pull in keynote demo changes (sdodson@redhat.com)
+- [tags] add some support for running a subset of config via tags
+  (jdetiber@redhat.com)
+- [metrics] add filter to clean up hostname for use in metrics deployment
+  (jdetiber@redhat.com)
+- enable service-serving-cert-signer by default (abutcher@redhat.com)
+- Fix review comments (mkumatag@in.ibm.com)
+- Remove duplicate flannel registration (mkumatag@in.ibm.com)
+
+* Wed Aug 24 2016 Scott Dodson <sdodson@redhat.com> 3.3.15-1
+- simplify repo configuration (jdetiber@redhat.com)
+- don't set virt_sandbox_use_nfs on Fedora, it was replaced by virt_use_nfs
+  (maxamillion@fedoraproject.org)
+- Correct flannel cert variables. (abutcher@redhat.com)
+- Make note about ansible/install logs messing up ci tests
+  (tbielawa@redhat.com)
+- remove fedora origin copr (it's in mainline fedora now), some dnf/yum clean
+  up (maxamillion@fedoraproject.org)
+- Move nested print_read_config_error function into it's own function
+  (tbielawa@redhat.com)
+- Makefile includes ci-pyflakes target now (tbielawa@redhat.com)
+- Fix BZ1368296 by quietly recollecting facts if the cache is removed
+  (tbielawa@redhat.com)
+- Correct masterCA config typo. (abutcher@redhat.com)
+- don't gather facts when bootstrapping ansible for Fedora hosts
+  (maxamillion@fedoraproject.org)
+- a-o-i: Add variant and variant_version to migration (smunilla@redhat.com)
+- Fix upgrade failure when master-config does not have pluginOrderOverride.
+  (dgoodwin@redhat.com)
+- Add externalIPNetworkCIDRs to config (smunilla@redhat.com)
+
+* Tue Aug 23 2016 Scott Dodson <sdodson@redhat.com> 3.3.14-1
+- a-o-i: Fix ansible_ssh_user question (smunilla@redhat.com)
+- Don't run node config upgrade hook if host is not a node.
+  (dgoodwin@redhat.com)
+- Link ca to ca-bundle when ca-bundle does not exist. (abutcher@redhat.com)
+- Better error if no OpenShift RPMs are available. (dgoodwin@redhat.com)
+- Revert "Due to problems with with_fileglob lets avoid using it for now"
+  (sdodson@redhat.com)
+- Replace some virsh commands by native virt_XXX ansible module
+  (lhuard@amadeus.com)
+- Add warning at end of 3.3 upgrade if pluginOrderOverride is found.
+  (dgoodwin@redhat.com)
+- a-o-i: Remove Legacy Config Upgrade (smunilla@redhat.com)
+- Fix etcd uninstall (sdodson@redhat.com)
+- Bug 1358951 - Error loading config, no such key: 'deployment' when using
+  previously valid answers file (smunilla@redhat.com)
+- Fix standalone Docker upgrade missing symlink. (dgoodwin@redhat.com)
+- Open OpenStack security group for the service node port range
+  (lhuard@amadeus.com)
+- Fix the “node on master” feature (lhuard@amadeus.com)
+- Due to problems with with_fileglob lets avoid using it for now
+  (sdodson@redhat.com)
+
 * Fri Aug 19 2016 Troy Dawson <tdawson@redhat.com> 3.3.13-1
 - Fix warnings in OpenStack provider with ansible 2.1 (lhuard@amadeus.com)
 - Mount /sys rw (sdodson@redhat.com)
@@ -2163,4 +2411,3 @@ Atomic OpenShift Utilities includes
 
 * Mon Oct 19 2015 Troy Dawson <tdawson@redhat.com> 3.0.2-1
 - Initial Package
-

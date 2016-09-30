@@ -149,6 +149,7 @@ def hostname_valid(hostname):
     if (not hostname or
             hostname.startswith('localhost') or
             hostname.endswith('localdomain') or
+            hostname.endswith('novalocal') or
             len(hostname.split('.')) < 2):
         return False
 
@@ -477,6 +478,14 @@ def set_selectors(facts):
         facts['hosted']['registry'] = {}
     if 'selector' not in facts['hosted']['registry'] or facts['hosted']['registry']['selector'] in [None, 'None']:
         facts['hosted']['registry']['selector'] = selector
+    if 'metrics' not in facts['hosted']:
+        facts['hosted']['metrics'] = {}
+    if 'selector' not in facts['hosted']['metrics'] or facts['hosted']['metrics']['selector'] in [None, 'None']:
+        facts['hosted']['metrics']['selector'] = None
+    if 'logging' not in facts['hosted']:
+        facts['hosted']['logging'] = {}
+    if 'selector' not in facts['hosted']['logging'] or facts['hosted']['logging']['selector'] in [None, 'None']:
+        facts['hosted']['logging']['selector'] = None
 
     return facts
 
@@ -789,7 +798,7 @@ def set_deployment_facts_if_unset(facts):
                 curr_disabled_features = set(facts['master']['disabled_features'])
                 facts['master']['disabled_features'] = list(curr_disabled_features.union(openshift_features))
         else:
-            if deployment_type == 'atomic-enterprise':
+            if facts['common']['deployment_subtype'] == 'registry':
                 facts['master']['disabled_features'] = openshift_features
 
     if 'node' in facts:
@@ -910,6 +919,14 @@ def set_sdn_facts_if_unset(facts, system_facts):
 
     return facts
 
+def set_nodename(facts):
+    if 'node' in facts and 'common' in facts:
+        if 'cloudprovider' in facts and facts['cloudprovider']['kind'] == 'openstack':
+            facts['node']['nodename'] = facts['provider']['metadata']['hostname'].replace('.novalocal', '')
+        else:
+            facts['node']['nodename'] = facts['common']['hostname'].lower()
+    return facts
+
 def migrate_oauth_template_facts(facts):
     """
     Migrate an old oauth template fact to a newer format if it's present.
@@ -1028,6 +1045,8 @@ def build_kubelet_args(facts):
                 if facts['cloudprovider']['kind'] == 'openstack':
                     kubelet_args['cloud-provider'] = ['openstack']
                     kubelet_args['cloud-config'] = [cloud_cfg_path + '/openstack.conf']
+                if facts['cloudprovider']['kind'] == 'gce':
+                    kubelet_args['cloud-provider'] = ['gce']
         if kubelet_args != {}:
             facts = merge_facts({'node': {'kubelet_args': kubelet_args}}, facts, [], [])
     return facts
@@ -1046,6 +1065,8 @@ def build_controller_args(facts):
                 if facts['cloudprovider']['kind'] == 'openstack':
                     controller_args['cloud-provider'] = ['openstack']
                     controller_args['cloud-config'] = [cloud_cfg_path + '/openstack.conf']
+                if facts['cloudprovider']['kind'] == 'gce':
+                    controller_args['cloud-provider'] = ['gce']
         if controller_args != {}:
             facts = merge_facts({'master': {'controller_args': controller_args}}, facts, [], [])
     return facts
@@ -1064,6 +1085,8 @@ def build_api_server_args(facts):
                 if facts['cloudprovider']['kind'] == 'openstack':
                     api_server_args['cloud-provider'] = ['openstack']
                     api_server_args['cloud-config'] = [cloud_cfg_path + '/openstack.conf']
+                if facts['cloudprovider']['kind'] == 'gce':
+                    api_server_args['cloud-provider'] = ['gce']
         if api_server_args != {}:
             facts = merge_facts({'master': {'api_server_args': api_server_args}}, facts, [], [])
     return facts
@@ -1206,7 +1229,7 @@ def apply_provider_facts(facts, provider_facts):
 
         facts['common'][h_var] = choose_hostname(
             [provider_facts['network'].get(h_var)],
-            facts['common'][ip_var]
+            facts['common'][h_var]
         )
 
     facts['provider'] = provider_facts
@@ -1425,6 +1448,9 @@ def set_proxy_facts(facts):
             builddefaults['http_proxy'] = common['http_proxy']
         if 'https_proxy' not in builddefaults and 'https_proxy' in common:
             builddefaults['https_proxy'] = common['https_proxy']
+        # make no_proxy into a list if it's not
+        if 'no_proxy' in builddefaults and isinstance(builddefaults['no_proxy'], basestring):
+            builddefaults['no_proxy'] = builddefaults['no_proxy'].split(",")
         if 'no_proxy' not in builddefaults and 'no_proxy' in common:
             builddefaults['no_proxy'] = common['no_proxy']
         if 'git_http_proxy' not in builddefaults and 'http_proxy' in builddefaults:
@@ -1649,7 +1675,12 @@ class OpenShiftFacts(object):
         else:
             deployment_type = 'origin'
 
-        defaults = self.get_defaults(roles, deployment_type)
+        if 'common' in local_facts and 'deployment_subtype' in local_facts['common']:
+            deployment_subtype = local_facts['common']['deployment_subtype']
+        else:
+            deployment_subtype = 'basic'
+
+        defaults = self.get_defaults(roles, deployment_type, deployment_subtype)
         provider_facts = self.init_provider_facts()
         facts = apply_provider_facts(defaults, provider_facts)
         facts = merge_facts(facts,
@@ -1679,9 +1710,10 @@ class OpenShiftFacts(object):
         facts = set_proxy_facts(facts)
         if not safe_get_bool(facts['common']['is_containerized']):
             facts = set_installed_variant_rpm_facts(facts)
+        facts = set_nodename(facts)
         return dict(openshift=facts)
 
-    def get_defaults(self, roles, deployment_type):
+    def get_defaults(self, roles, deployment_type, deployment_subtype):
         """ Get default fact values
 
             Args:
@@ -1701,6 +1733,7 @@ class OpenShiftFacts(object):
         defaults['common'] = dict(use_openshift_sdn=True, ip=ip_addr,
                                   public_ip=ip_addr,
                                   deployment_type=deployment_type,
+                                  deployment_subtype=deployment_subtype,
                                   hostname=hostname,
                                   public_hostname=hostname,
                                   portal_net='172.30.0.0/16',
@@ -1716,6 +1749,8 @@ class OpenShiftFacts(object):
                 {"name": "PodFitsPorts"},
                 {"name": "NoDiskConflict"},
                 {"name": "NoVolumeZoneConflict"},
+                {"name": "MaxEBSVolumeCount"},
+                {"name": "MaxGCEPDVolumeCount"},
                 {"name": "Region", "argument": {"serviceAffinity" : {"labels" : ["region"]}}}
             ]
             scheduler_priorities = [
@@ -1786,13 +1821,29 @@ class OpenShiftFacts(object):
                         ),
                         nfs=dict(
                             directory='/exports',
-                            options='*(rw,root_squash)'),
-                        openstack=dict(
-                            filesystem='ext4',
-                            volumeID='123'),
+                            options='*(rw,root_squash)'
+                        ),
                         host=None,
-                        access_modes=['ReadWriteMany'],
-                        create_pv=True
+                        access_modes=['ReadWriteOnce'],
+                        create_pv=True,
+                        create_pvc=False
+                    )
+                ),
+                logging=dict(
+                    storage=dict(
+                        kind=None,
+                        volume=dict(
+                            name='logging-es',
+                            size='10Gi'
+                        ),
+                        nfs=dict(
+                            directory='/exports',
+                            options='*(rw,root_squash)'
+                        ),
+                        host=None,
+                        access_modes=['ReadWriteOnce'],
+                        create_pv=True,
+                        create_pvc=False
                     )
                 ),
                 registry=dict(
@@ -1807,7 +1858,8 @@ class OpenShiftFacts(object):
                             options='*(rw,root_squash)'),
                         host=None,
                         access_modes=['ReadWriteMany'],
-                        create_pv=True
+                        create_pv=True,
+                        create_pvc=True
                     )
                 ),
                 router=dict()

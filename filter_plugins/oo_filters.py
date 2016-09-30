@@ -16,7 +16,17 @@ import pkg_resources
 import re
 import json
 import yaml
-from ansible.utils.unicode import to_unicode
+from ansible.parsing.yaml.dumper import AnsibleDumper
+from urlparse import urlparse
+
+try:
+    # ansible-2.2
+    # ansible.utils.unicode.to_unicode is deprecated in ansible-2.2,
+    # ansible.module_utils._text.to_text should be used instead.
+    from ansible.module_utils._text import to_text
+except ImportError:
+    # ansible-2.1
+    from ansible.utils.unicode import to_unicode as to_text
 
 # Disabling too-many-public-methods, since filter methods are necessarily
 # public
@@ -527,9 +537,9 @@ class FilterModule(object):
                 raise errors.AnsibleFilterError(("|failed to parse certificate '%s', " % certificate['certfile'] +
                                                  "please specify certificate names in host inventory"))
 
+            certificate['names'] = list(set(certificate['names']))
             if 'cafile' not in certificate:
                 certificate['names'] = [name for name in certificate['names'] if name not in internal_hostnames]
-                certificate['names'] = list(set(certificate['names']))
                 if not certificate['names']:
                     raise errors.AnsibleFilterError(("|failed to parse certificate '%s' or " % certificate['certfile'] +
                                                      "detected a collision with internal hostname, please specify " +
@@ -544,7 +554,7 @@ class FilterModule(object):
         return certificates
 
     @staticmethod
-    def oo_pretty_print_cluster(data):
+    def oo_pretty_print_cluster(data, prefix='tag_'):
         """ Read a subset of hostvars and build a summary of the cluster
             in the following layout:
 
@@ -571,8 +581,8 @@ class FilterModule(object):
                     returns 'value2'
             """
             for tag in tags:
-                if tag[:len(key)+4] == 'tag_' + key:
-                    return tag[len(key)+5:]
+                if tag[:len(prefix)+len(key)] == prefix + key:
+                    return tag[len(prefix)+len(key)+1:]
             raise KeyError(key)
 
         def _add_host(clusters,
@@ -620,11 +630,13 @@ class FilterModule(object):
             return ""
 
         try:
-            transformed = yaml.safe_dump(data, indent=indent, allow_unicode=True, default_flow_style=False, **kw)
+            transformed = yaml.dump(data, indent=indent, allow_unicode=True,
+                                    default_flow_style=False,
+                                    Dumper=AnsibleDumper, **kw)
             padded = "\n".join([" " * level * indent + line for line in transformed.splitlines()])
-            return to_unicode("\n{0}".format(padded))
+            return to_text("\n{0}".format(padded))
         except Exception as my_e:
-            raise errors.AnsibleFilterError('Failed to convert: %s', my_e)
+            raise errors.AnsibleFilterError('Failed to convert: %s' % my_e)
 
     @staticmethod
     def oo_openshift_env(hostvars):
@@ -709,7 +721,7 @@ class FilterModule(object):
                                         fsType=filesystem,
                                         volumeID=volume_id)))
                             persistent_volumes.append(persistent_volume)
-                        elif kind != 'object':
+                        elif not (kind == 'object' or kind == 'dynamic'):
                             msg = "|failed invalid storage kind '{0}' for component '{1}'".format(
                                 kind,
                                 component)
@@ -731,12 +743,14 @@ class FilterModule(object):
         if 'hosted' in hostvars['openshift']:
             for component in hostvars['openshift']['hosted']:
                 if 'storage' in hostvars['openshift']['hosted'][component]:
-                    kind = hostvars['openshift']['hosted'][component]['storage']['kind']
-                    create_pv = hostvars['openshift']['hosted'][component]['storage']['create_pv']
-                    if kind != None and create_pv:
-                        volume = hostvars['openshift']['hosted'][component]['storage']['volume']['name']
-                        size = hostvars['openshift']['hosted'][component]['storage']['volume']['size']
-                        access_modes = hostvars['openshift']['hosted'][component]['storage']['access_modes']
+                    params = hostvars['openshift']['hosted'][component]['storage']
+                    kind = params['kind']
+                    create_pv = params['create_pv']
+                    create_pvc = params['create_pvc']
+                    if kind not in [None, 'object'] and create_pv and create_pvc:
+                        volume = params['volume']['name']
+                        size = params['volume']['size']
+                        access_modes = params['access_modes']
                         persistent_volume_claim = dict(
                             name="{0}-claim".format(volume),
                             capacity=size,
@@ -829,6 +843,22 @@ class FilterModule(object):
 
         return version
 
+    @staticmethod
+    def oo_hostname_from_url(url):
+        """ Returns the hostname contained in a URL
+
+            Ex: https://ose3-master.example.com/v1/api -> ose3-master.example.com
+        """
+        if not isinstance(url, basestring):
+            raise errors.AnsibleFilterError("|failed expects a string or unicode")
+        parse_result = urlparse(url)
+        if parse_result.netloc != '':
+            return parse_result.netloc
+        else:
+            # netloc wasn't parsed, assume url was missing scheme and path
+            return parse_result.path
+
+
     def filters(self):
         """ returns a mapping of filters to methods """
         return {
@@ -859,5 +889,6 @@ class FilterModule(object):
             "oo_get_hosts_from_hostvars": self.oo_get_hosts_from_hostvars,
             "oo_image_tag_to_rpm_version": self.oo_image_tag_to_rpm_version,
             "oo_merge_dicts": self.oo_merge_dicts,
+            "oo_hostname_from_url": self.oo_hostname_from_url,
             "oo_merge_hostvars": self.oo_merge_hostvars,
         }
