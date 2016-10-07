@@ -364,12 +364,15 @@ def normalize_openstack_facts(metadata, facts):
     facts['network']['ip'] = local_ipv4
     facts['network']['public_ip'] = metadata['ec2_compat']['public-ipv4']
 
-    # TODO: verify local hostname makes sense and is resolvable
-    facts['network']['hostname'] = metadata['hostname']
-
-    # TODO: verify that public hostname makes sense and is resolvable
-    pub_h = metadata['ec2_compat']['public-hostname']
-    facts['network']['public_hostname'] = pub_h
+    for f_var, h_var, ip_var in [('hostname',        'hostname',        'local-ipv4'),
+                                 ('public_hostname', 'public-hostname', 'public-ipv4')]:
+        try:
+            if socket.gethostbyname(metadata['ec2_compat'][h_var]) == metadata['ec2_compat'][ip_var]:
+                facts['network'][f_var] = metadata['ec2_compat'][h_var]
+            else:
+                facts['network'][f_var] = metadata['ec2_compat'][ip_var]
+        except socket.gaierror:
+            facts['network'][f_var] = metadata['ec2_compat'][ip_var]
 
     return facts
 
@@ -1609,7 +1612,6 @@ class OpenShiftFacts(object):
                    'docker',
                    'etcd',
                    'hosted',
-                   'loadbalancer',
                    'master',
                    'node']
 
@@ -1864,13 +1866,6 @@ class OpenShiftFacts(object):
                 ),
                 router=dict()
             )
-
-        if 'loadbalancer' in roles:
-            loadbalancer = dict(frontend_port='8443',
-                                default_maxconn='20000',
-                                global_maxconn='20000',
-                                limit_nofile='100000')
-            defaults['loadbalancer'] = loadbalancer
 
         return defaults
 
