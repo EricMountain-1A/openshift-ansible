@@ -830,6 +830,8 @@ objects:
         - name: httpd-auth-config
           configMap:
             name: "${HTTPD_SERVICE_NAME}-auth-configs"
+        - name: container-environment
+          emptyDir: {}
         containers:
         - name: httpd
           image: "${HTTPD_IMG_NAME}:${HTTPD_IMG_TAG}"
@@ -855,6 +857,9 @@ objects:
             mountPath: "${HTTPD_CONFIG_DIR}"
           - name: httpd-auth-config
             mountPath: "${HTTPD_AUTH_CONFIG_DIR}"
+          - name: container-environment
+            mountPath: "/etc/container-environment"
+            subPath: container-environment
           resources:
             requests:
               memory: "${HTTPD_MEM_REQ}"
@@ -872,11 +877,34 @@ objects:
               configMapKeyRef:
                 name: "${HTTPD_SERVICE_NAME}-auth-configs"
                 key: auth-kerberos-realms
-          lifecycle:
-            postStart:
-              exec:
-                command:
-                - "/usr/bin/save-container-environment"
+        initContainers:
+        - name: httpd-save-environment
+          image: "${HTTPD_IMG_NAME}:${HTTPD_IMG_TAG}"
+          command:
+          - "/bin/bash"
+          args:
+          - '-c'
+          - 'env | egrep "^HTTPD_|^PATH=" | sort > /etc/httpd-environment/container-environment'
+          volumeMounts:
+          - name: container-environment
+            mountPath: "/etc/httpd-environment"
+          resources:
+            requests:
+              memory: "${HTTPD_MEM_REQ}"
+              cpu: "${HTTPD_CPU_REQ}"
+            limits:
+              memory: "${HTTPD_MEM_LIMIT}"
+          env:
+          - name: HTTPD_AUTH_TYPE
+            valueFrom:
+              configMapKeyRef:
+                name: "${HTTPD_SERVICE_NAME}-auth-configs"
+                key: auth-type
+          - name: HTTPD_AUTH_KERBEROS_REALMS
+            valueFrom:
+              configMapKeyRef:
+                name: "${HTTPD_SERVICE_NAME}-auth-configs"
+                key: auth-kerberos-realms
         serviceAccount: cfme-httpd
         serviceAccountName: cfme-httpd
 parameters:
